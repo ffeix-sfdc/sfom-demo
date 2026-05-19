@@ -4,8 +4,16 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import asyncio
 import os
+import shutil
+from pathlib import Path
 from routers import auth, orgs, orders, use_cases, catalogs, oci, delivery_estimate, checkout, slot_manager, tms, deploy, fulfillment, cache
 from services.sf_cli import refresh_orgs_cache
+
+# Bootstrap app_state.json from example if missing (first-run on a fresh clone)
+_state_file = Path(__file__).parent / "app_state.json"
+_example_file = Path(__file__).parent / "app_state.example.json"
+if not _state_file.exists() and _example_file.exists():
+    shutil.copy(_example_file, _state_file)
 
 app = FastAPI(title="SFOM Demo API")
 

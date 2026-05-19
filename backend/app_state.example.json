@@ -1,0 +1,12 @@
+{
+  "active_alias": null,
+  "order_seq": 0,
+  "cds": {
+    "client_id": "",
+    "client_secret": "",
+    "scope": "",
+    "org_short_code": "",
+    "region": "us-east-2",
+    "correlation_id": "12345"
+  }
+}
