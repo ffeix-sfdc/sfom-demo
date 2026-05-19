@@ -1,0 +1,38 @@
+X  Regler le problème de Devilery charge
+X  Ajouter option pour multi delivery
+
+X  Ajouter Nouveau form OCI et Delivery Estimate + Tab horisontal pour y acceder
+X  - OCI un ou plusieurs SKU sur Location Group ou Plusieurs Locations (selectionné depuis Location Group)
+X  - DE    
+        - PLP Get Estimate ?
+        - PDP Get Estimate
+        - PDP Get Pickup
+        - Cart Get Estimate
+        - Cart Get Pickup
+
+X  Ajouter nouveau form Cart/Checkout Simulate qui regroup OS + OCI + DE
+
+Reprendre la gestion de l'inventaire dans eCom pour ajouter un cach local et synchroniser les deltas toutes les X minutes
+  -- faire les Reserve et Release dans le cache on premier, puis async des appels api (voir ce qui remonte avec les delta)
+
+Ajouter dans le checkout: 
+  - Check OCI
+  - Get DE Estimate + choix shipping methode par le user (prix pour les delivery ?)
+  - Reverver le slot
+  - Voir pour utiliser TMS et reserver shipping
+
+X  Optimiser le nombre d'appel API fait vers Salesforce, voir en mutualiser certain (GraphQL ?) 
+
+X  Ajouter un flag "Require TMS Bookings" sur les Produits dans le Product catalog.
+X  Dans le Ecom, utilise ce flag pour le calcule du delivery estimate de chaque estimate ou le premier booking disponible après le estimatedShipDate max pour tous les produits ou le flag et true, les autres conserve le fonctionnement actuiel et ne doivent pas avoir de booking associé.
+X  Replique le mecanisme de cache des slots pour les booking.
+X  Pour l'ajout au panier en mode home delivery le client doit chosir le shipping method parmis ceux proposé.
+X  Le choix du shipping method peux être changer depuis le panier, ainsi que le booking slot quand il est nécessaire. Reprend la même logique que pour le slot.
+X  Le choix Shipping method et du booking doivent etre percisté dans le checkout en ajoutant les informations dans le champs json brut OrderMetadata__c de l'order summary
+
+Dans OCI ajoute une operation Operation "Manage Stock" qui doit permettre de modifier les quantiters des sku dans les locations.
+Je dois pouvoir modifier ou ajouter les valeurs pour Qty on Hand, Futures et Safety Stock.
+Le form doit permettre de selectionner un Location Group pour lister tous ces Locations, puis de selectionner un catalog pour lister tous les sku du catalog sous form de table.
+Par defaut le form liste tous les produits dans chaque locations, mais il doit être possible de transformer l'affichage en liste de tous les locations puis tous les produits.
+Les changement de stock doivent être pousser dans un seul appel vers oci via un bouton, Publish Stock
+Pose moi les questions nécessaire a l'implementation avant d'effectuer les changements

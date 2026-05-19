@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>SlotConfig__c</members>
+        <members>SlotBooking__c</members>
+        <members>TmsConfig__c</members>
+        <members>TmsTimeWindow__c</members>
+        <members>TmsBooking__c</members>
+        <name>CustomObject</name>
+    </types>
+    <types>
+        <members>SlotConfig__c</members>
+        <members>SlotBooking__c</members>
+        <members>TmsConfig__c</members>
+        <members>TmsTimeWindow__c</members>
+        <members>TmsBooking__c</members>
+        <name>CustomTab</name>
+    </types>
+    <types>
+        <members>OmsAppConfig</members>
+        <name>PermissionSet</name>
+    </types>
+    <types>
+        <members>SlotConfig__c-Slot Config Layout</members>
+        <members>SlotBooking__c-Slot Booking Layout</members>
+        <members>TmsConfig__c-TMS Config Layout</members>
+        <members>TmsTimeWindow__c-TMS Time Window Layout</members>
+        <members>TmsBooking__c-TMS Booking Layout</members>
+        <name>Layout</name>
+    </types>
+    <version>65.0</version>
+</Package>

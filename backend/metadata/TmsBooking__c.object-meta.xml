@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>TMS Booking</label>
+    <pluralLabel>TMS Bookings</pluralLabel>
+    <nameField>
+        <label>TMS Booking Name</label>
+        <type>AutoNumber</type>
+        <displayFormat>TB-{0000}</displayFormat>
+    </nameField>
+    <deploymentStatus>Deployed</deploymentStatus>
+    <sharingModel>ReadWrite</sharingModel>
+    <fields>
+        <fullName>TmsConfig__c</fullName>
+        <label>TMS Config</label>
+        <type>Lookup</type>
+        <referenceTo>TmsConfig__c</referenceTo>
+        <relationshipName>TmsConfigBookings</relationshipName>
+        <relationshipLabel>TMS Bookings</relationshipLabel>
+        <required>true</required>
+        <deleteConstraint>Restrict</deleteConstraint>
+    </fields>
+    <fields>
+        <fullName>DeliveryDate__c</fullName>
+        <label>Delivery Date</label>
+        <type>Date</type>
+        <required>true</required>
+    </fields>
+    <fields>
+        <fullName>WindowStart__c</fullName>
+        <label>Window Start</label>
+        <type>Text</type>
+        <length>5</length>
+        <required>true</required>
+        <unique>false</unique>
+        <externalId>false</externalId>
+    </fields>
+    <fields>
+        <fullName>WindowEnd__c</fullName>
+        <label>Window End</label>
+        <type>Text</type>
+        <length>5</length>
+        <required>true</required>
+        <unique>false</unique>
+        <externalId>false</externalId>
+    </fields>
+    <fields>
+        <fullName>PostalCode__c</fullName>
+        <label>Postal Code</label>
+        <type>Text</type>
+        <length>20</length>
+        <required>false</required>
+        <unique>false</unique>
+        <externalId>false</externalId>
+    </fields>
+    <fields>
+        <fullName>OrderSummary__c</fullName>
+        <label>Order Summary</label>
+        <type>Lookup</type>
+        <referenceTo>OrderSummary</referenceTo>
+        <relationshipName>OrderSummaryTmsBookings</relationshipName>
+        <relationshipLabel>TMS Bookings</relationshipLabel>
+        <required>false</required>
+    </fields>
+    <fields>
+        <fullName>FulfillmentOrder__c</fullName>
+        <label>Fulfillment Order</label>
+        <type>Lookup</type>
+        <referenceTo>FulfillmentOrder</referenceTo>
+        <relationshipName>FulfillmentOrderTmsBookings</relationshipName>
+        <relationshipLabel>TMS Bookings</relationshipLabel>
+        <required>false</required>
+    </fields>
+    <fields>
+        <fullName>Status__c</fullName>
+        <label>Status</label>
+        <type>Picklist</type>
+        <required>true</required>
+        <valueSet>
+            <valueSetDefinition>
+                <sorted>false</sorted>
+                <value><fullName>Pending</fullName><label>Pending</label><default>true</default></value>
+                <value><fullName>Confirmed</fullName><label>Confirmed</label><default>false</default></value>
+                <value><fullName>Cancelled</fullName><label>Cancelled</label><default>false</default></value>
+            </valueSetDefinition>
+        </valueSet>
+    </fields>
+</CustomObject>
