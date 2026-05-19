@@ -29,6 +29,8 @@ const SESSION_PRODUCT        = "ecom_product";        // selected product JSON o
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+const LANG_LOCALE = { en: "en-GB", fr: "fr-FR", es: "es-ES" };
+
 function WirePlaceholder({ className = "", children }) {
   return (
     <div className={`bg-gray-100 border-2 border-dashed border-gray-200 rounded flex items-center justify-center text-gray-400 text-sm ${className}`}>
@@ -206,7 +208,8 @@ async function resolvePickupSlot(storeExtRef, earliestISO) {
 // onPickupStore({ storeExtRef, storeName, pickupTime }) — called when user picks a store (geo mode)
 // onPickupTime(isoString) — called when single-store slot is resolved
 function BopisPickup({ sku, storeId, storeExtRef, storeName: storeNameProp, deSetupName, lgId, lgExtRef, catalogTransferDmId, checked, onChange, onPickupTime, onPickupStore }) {
-  const { t } = useLang();
+  const { t, lang } = useLang();
+  const locale = LANG_LOCALE[lang] || "en-GB";
   // single-store state
   const [state, setState] = useState("idle"); // idle | loading | done | error | no-config | no-stock
   const [pickupTime, setPickupTime] = useState(null);
@@ -521,8 +524,8 @@ function BopisPickup({ sku, storeId, storeExtRef, storeName: storeNameProp, deSe
     }
     if (state === "done" && pickupTime) {
       const dt = new Date(pickupTime);
-      const dateLabel = dt.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
-      const timeLabel = dt.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+      const dateLabel = dt.toLocaleDateString(locale, { weekday: "short", day: "numeric", month: "short" });
+      const timeLabel = dt.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
       return (
         <label className="flex items-start gap-2 mt-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 cursor-pointer select-none">
           <input type="checkbox" className="mt-0.5 accent-green-600 shrink-0" checked={!!checked} onChange={(e) => onChange?.(e.target.checked)} />
@@ -574,8 +577,8 @@ function BopisPickup({ sku, storeId, storeExtRef, storeName: storeNameProp, deSe
     // Store already chosen via geo
     if (selectedNearby) {
       const dt = selectedNearby.pickupTime ? new Date(selectedNearby.pickupTime) : null;
-      const dateLabel = dt?.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
-      const timeLabel = dt?.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+      const dateLabel = dt?.toLocaleDateString(locale, { weekday: "short", day: "numeric", month: "short" });
+      const timeLabel = dt?.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
       const isTransfer = selectedNearby.isTransfer;
       return (
         <label className={`flex items-start gap-2 mt-2 rounded-lg px-3 py-2 cursor-pointer select-none border ${isTransfer ? "bg-purple-50 border-purple-200" : "bg-green-50 border-green-200"}`}>
@@ -599,8 +602,8 @@ function BopisPickup({ sku, storeId, storeExtRef, storeName: storeNameProp, deSe
         </p>
         {nearbyStores.map((s) => {
           const dt = s.pickupTime ? new Date(s.pickupTime) : null;
-          const dateLabel = dt?.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
-          const timeLabel = dt?.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+          const dateLabel = dt?.toLocaleDateString(locale, { weekday: "short", day: "numeric", month: "short" });
+          const timeLabel = dt?.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
           const available = s.atf > 0;
           const isTransfer = s.isTransfer;
           const colorCls = isTransfer
@@ -847,8 +850,6 @@ function PLPView({ catalog, products, categories, cart, onAddToCart, onGoToPDP, 
 }
 
 // ── Home Delivery estimate widget ────────────────────────────────────────────
-
-const LANG_LOCALE = { en: "en-GB", fr: "fr-FR", es: "es-ES" };
 
 // HomeDelivery — shows delivery estimates per shipping method.
 // When product.require_tms_booking=true, also finds the first available TMS slot
@@ -1231,7 +1232,8 @@ function PDPView({ product, categories, catalog, onAddToCart, onBack, onGoToCart
 // and shows only slots at or after that time.
 
 function SlotPickerModal({ storeExtRef, afterISO, onSelect, onClose }) {
-  const { t } = useLang();
+  const { t, lang } = useLang();
+  const locale = LANG_LOCALE[lang] || "en-GB";
   const [slots, setSlots] = useState([]); // [{date, time, available}]
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null); // {date, time}
@@ -1284,7 +1286,7 @@ function SlotPickerModal({ storeExtRef, afterISO, onSelect, onClose }) {
           ) : (
             slots.map((s) => {
               const dt = new Date(`${s.date}T${s.time}`);
-              const label = dt.toLocaleString("fr-FR", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+              const label = dt.toLocaleString(locale, { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
               const isSelected = selected?.date === s.date && selected?.time === s.time;
               return (
                 <button
@@ -1322,6 +1324,8 @@ function SlotPickerModal({ storeExtRef, afterISO, onSelect, onClose }) {
 // onSelect({ date, windowStart, windowEnd }) — called when confirmed.
 
 function TmsBookingPickerModal({ methodRef, afterDate, onSelect, onClose }) {
+  const { t, lang } = useLang();
+  const locale = LANG_LOCALE[lang] || "en-GB";
   const [slots, setSlots] = useState([]); // [{date, windowStart, windowEnd}]
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
@@ -1363,18 +1367,18 @@ function TmsBookingPickerModal({ methodRef, afterDate, onSelect, onClose }) {
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-2xl w-80 overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="bg-orange-500 px-4 py-3 flex items-center justify-between">
-          <h3 className="text-white font-semibold text-sm">Delivery Slot</h3>
+          <h3 className="text-white font-semibold text-sm">{t.tmsSlotTitle}</h3>
           <button onClick={onClose} className="text-white/70 hover:text-white text-lg leading-none">×</button>
         </div>
         <div className="p-3 space-y-2 max-h-72 overflow-y-auto">
           {loading ? (
-            <p className="text-xs text-gray-400 text-center py-4">Searching available slots…</p>
+            <p className="text-xs text-gray-400 text-center py-4">{t.tmsSlotSearching}</p>
           ) : slots.length === 0 ? (
-            <p className="text-xs text-gray-400 text-center py-4">No slots available in the next 14 days.</p>
+            <p className="text-xs text-gray-400 text-center py-4">{t.tmsSlotNone}</p>
           ) : (
             slots.map((s) => {
               const d = new Date(s.date + "T00:00:00");
-              const label = `${d.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })} ${s.windowStart}–${s.windowEnd}`;
+              const label = `${d.toLocaleDateString(locale, { weekday: "short", day: "numeric", month: "short" })} ${s.windowStart}–${s.windowEnd}`;
               const isSelected = selected?.date === s.date && selected?.windowStart === s.windowStart;
               return (
                 <button
@@ -1394,7 +1398,7 @@ function TmsBookingPickerModal({ methodRef, afterDate, onSelect, onClose }) {
               onClick={() => onSelect(selected)}
               className="w-full bg-orange-500 text-white py-2 rounded text-sm font-medium hover:bg-orange-600"
             >
-              Confirm
+              {t.tmsSlotConfirm}
             </button>
           </div>
         )}
@@ -1406,7 +1410,8 @@ function TmsBookingPickerModal({ methodRef, afterDate, onSelect, onClose }) {
 // ── Cart View ─────────────────────────────────────────────────────────────────
 
 function CartView({ cart, onUpdateQty, onRemove, onCheckout, onContinueShopping, catalog, hasLg, storeName, onChangeStore, deSetupName, onUpdatePickupTime, onUpdateShipDelivery, inventory, deCarrierMethods }) {
-  const { t } = useLang();
+  const { t, lang } = useLang();
+  const locale = LANG_LOCALE[lang] || "en-GB";
   const subtotal = cart.reduce((s, item) => s + item.product.unit_price * item.quantity, 0);
   const [slotPickerStore, setSlotPickerStore] = useState(null); // { storeExtRef, afterISO }
   const [tmsPickerInfo, setTmsPickerInfo] = useState(null); // { methodRef, afterDate }
@@ -1456,8 +1461,8 @@ function CartView({ cart, onUpdateQty, onRemove, onCheckout, onContinueShopping,
                 }
               }
               const latestDt = latestSlotISO ? new Date(latestSlotISO) : null;
-              const dateLabel = latestDt ? latestDt.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" }) : null;
-              const timeLabel = latestDt ? latestDt.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : null;
+              const dateLabel = latestDt ? latestDt.toLocaleDateString(locale, { weekday: "short", day: "numeric", month: "short" }) : null;
+              const timeLabel = latestDt ? latestDt.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" }) : null;
 
               // For ship groups: collect TMS booking info (from first item that has homeDelivery)
               let shipMethodName = null;
@@ -1480,7 +1485,7 @@ function CartView({ cart, onUpdateQty, onRemove, onCheckout, onContinueShopping,
                 }
               }
               const tmsDate = tmsBooking ? new Date(tmsBooking.date + "T00:00:00") : null;
-              const tmsDateLabel = tmsDate ? tmsDate.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" }) : null;
+              const tmsDateLabel = tmsDate ? tmsDate.toLocaleDateString(locale, { weekday: "short", day: "numeric", month: "short" }) : null;
 
               return (
                 <div key={key} className="border rounded-lg overflow-hidden">

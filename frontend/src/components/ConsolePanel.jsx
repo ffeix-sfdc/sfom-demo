@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { getLogs, subscribe, clearLogs } from "../log/store";
+import { useLang } from "../i18n/LangContext";
 
 const STORAGE_KEY = "console_height";
 const DEFAULT_HEIGHT = 280;
@@ -151,6 +152,7 @@ export function useConsoleHeight() {
 }
 
 export default function ConsolePanel({ onOpenChange, onHeightChange }) {
+  const { t } = useLang();
   const [logs, setLogs] = useState(() => getLogs().filter((l) => l.type !== "preview"));
   const [visible, setVisible] = useState(false);
   const [pinned, setPinned] = useState(false);
@@ -290,7 +292,7 @@ export default function ConsolePanel({ onOpenChange, onHeightChange }) {
           className="flex-1 overflow-y-auto text-gray-300"
         >
           {logs.length === 0 ? (
-            <p className="text-gray-600 text-xs text-center mt-8">Aucun log.</p>
+            <p className="text-gray-600 text-xs text-center mt-8">{t.noLog}</p>
           ) : (
             logs.map((log) => <LogEntry key={log.id} log={log} />)
           )}

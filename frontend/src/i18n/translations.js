@@ -174,6 +174,9 @@ const t = {
     // Preview panel
     previewEmpty: "Fill in the form to see the payload preview.",
 
+    // Console
+    noLog: "No entries.",
+
     // App Config drawer
     appConfig: "App Config",
     tabSlotManager: "Slot Manager",
@@ -181,6 +184,14 @@ const t = {
 
     // Shared
     selectPlaceholder: "Select…",
+    deleteTitle: "Delete",
+    editTitle: "Edit",
+
+    // TMS Booking picker
+    tmsSlotTitle: "Delivery Slot",
+    tmsSlotSearching: "Searching available slots…",
+    tmsSlotNone: "No slots available in the next 14 days.",
+    tmsSlotConfirm: "Confirm",
 
     // EcomForm — store picker
     ecomChooseStore: "Choose a store",
@@ -450,11 +461,20 @@ const t = {
 
     previewEmpty: "Remplissez le formulaire pour voir l'aperçu du payload.",
 
+    noLog: "Aucun log.",
+
     appConfig: "Configuration",
     tabSlotManager: "Slot Manager",
     tabTms: "TMS",
 
     selectPlaceholder: "Sélectionner…",
+    deleteTitle: "Supprimer",
+    editTitle: "Modifier",
+
+    tmsSlotTitle: "Créneau de livraison",
+    tmsSlotSearching: "Recherche des créneaux disponibles…",
+    tmsSlotNone: "Aucun créneau disponible dans les 14 prochains jours.",
+    tmsSlotConfirm: "Confirmer",
 
     // EcomForm — store picker
     ecomChooseStore: "Choisir un magasin",
@@ -724,11 +744,20 @@ const t = {
 
     previewEmpty: "Complete el formulario para ver la vista previa del payload.",
 
+    noLog: "Sin entradas.",
+
     appConfig: "Configuración",
     tabSlotManager: "Slot Manager",
     tabTms: "TMS",
 
     selectPlaceholder: "Seleccionar…",
+    deleteTitle: "Eliminar",
+    editTitle: "Editar",
+
+    tmsSlotTitle: "Franja de entrega",
+    tmsSlotSearching: "Buscando franjas disponibles…",
+    tmsSlotNone: "No hay franjas disponibles en los próximos 14 días.",
+    tmsSlotConfirm: "Confirmar",
 
     // EcomForm — store picker
     ecomChooseStore: "Elegir una tienda",

@@ -7,15 +7,15 @@ Authentication uses the **Salesforce CLI** — no Connected App or OAuth setup r
 
 ## What it does
 
-| Module | Description |
-|---|---|
-| **Create Order** | Build and submit Order Summaries via the SF Order Graph API |
-| **OCI** | Check availability, create/release reservations, manage stock (QoH, Safety Stock, Futures) |
-| **Delivery Estimate** | BOPIS pickup times and home delivery estimates via CDS API |
-| **eCommerce Simulation** | Full PLP → PDP → Cart → Checkout flow with BOPIS, Home Delivery, TMS slots |
-| **Slot Manager** | Configure and book BOPIS pickup time slots |
-| **TMS** | Configure delivery time windows and manage carrier bookings |
-| **Fulfillment** | View and manage Fulfillment Orders |
+| Module | Description | |
+|---|---|---|
+| **Create Order** | Build and submit Order Summaries via the SF Order Graph API | ![Create Order](frontend/public/help/05-create-order.png) |
+| **OCI** | Check availability, create/release reservations, manage stock (QoH, Safety Stock, Futures) | ![OCI](frontend/public/help/08-oci-operations.png) |
+| **Delivery Estimate** | BOPIS pickup times and home delivery estimates via CDS API | ![Delivery Estimate](frontend/public/help/11-delivery-estimate.png) |
+| **eCommerce Simulation** | Full PLP → PDP → Cart → Checkout flow with BOPIS, Home Delivery, TMS slots | ![eCommerce](frontend/public/help/13-ecom-plp.png) |
+| **Slot Manager** | Configure and book BOPIS pickup time slots | ![Slot Manager](frontend/public/help/17-slot-manager.png) |
+| **TMS** | Configure delivery time windows and manage carrier bookings | ![TMS](frontend/public/help/18-tms-config.png) |
+| **Fulfillment** | View and manage Fulfillment Orders | ![Fulfillment](frontend/public/help/20-fulfillment.png) |
 
 ---
 

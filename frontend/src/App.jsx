@@ -12,6 +12,7 @@ import CatalogPanel from "./components/CatalogPanel";
 import ConsolePanel, { useConsoleHeight } from "./components/ConsolePanel";
 import PreviewPanel from "./components/PreviewPanel";
 import AppConfigDrawer from "./components/AppConfigDrawer";
+import HelpPanel from "./components/HelpPanel";
 import { useLang } from "./i18n/LangContext";
 import { addLog } from "./log/store";
 import { setOrgAlias } from "./api/orgCache";
@@ -41,6 +42,7 @@ export default function App() {
   const [consoleHeight, setConsoleHeight] = useState(useConsoleHeight);
   const [configOpen, setConfigOpen] = useState(false);
   const [configPinned, setConfigPinned] = useState(() => localStorage.getItem("appConfigPinned") === "true");
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const handleTogglePin = () => {
     setConfigPinned((prev) => {
@@ -113,6 +115,13 @@ export default function App() {
             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
             </svg>
+          </button>
+          <button
+            onClick={() => setHelpOpen(true)}
+            className="ml-2 w-8 h-8 flex items-center justify-center rounded bg-white/20 hover:bg-white/30 transition-colors text-white font-bold text-sm"
+            title="Help"
+          >
+            ?
           </button>
         </div>
 
@@ -242,6 +251,9 @@ export default function App() {
         pinned={configPinned}
         onTogglePin={handleTogglePin}
       />
+
+      {/* Help panel */}
+      {helpOpen && <HelpPanel onClose={() => setHelpOpen(false)} />}
     </div>
   );
 }

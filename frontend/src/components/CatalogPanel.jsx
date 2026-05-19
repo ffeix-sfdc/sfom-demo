@@ -780,7 +780,7 @@ export default function CatalogPanel({ activeCatalogId, onSelectCatalog }) {
                             <button
                               onClick={() => startEditCatalog(cat)}
                               className="text-xs text-gray-300 hover:text-[#0070d2] px-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                              title="Modifier"
+                              title={t.editTitle}
                             >
                               ✎
                             </button>
@@ -795,7 +795,7 @@ export default function CatalogPanel({ activeCatalogId, onSelectCatalog }) {
                               <button
                                 onClick={() => setConfirmDeleteCatalog(cat.id)}
                                 className="text-xs text-gray-300 hover:text-red-400 px-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                                title="Supprimer"
+                                title={t.deleteTitle}
                               >
                                 🗑
                               </button>
@@ -888,7 +888,7 @@ export default function CatalogPanel({ activeCatalogId, onSelectCatalog }) {
                                   </div>
                                   <div className="flex gap-1 shrink-0 opacity-0 group-hover/product:opacity-100 transition-opacity">
                                     <button onClick={() => startEditProduct(p)}
-                                      className="text-xs text-gray-400 hover:text-[#0070d2] px-1" title="Modifier">✎</button>
+                                      className="text-xs text-gray-400 hover:text-[#0070d2] px-1" title={t.editTitle}>✎</button>
                                     {confirmDeleteProduct === p.id ? (
                                       <>
                                         <button onClick={() => deleteProduct(p.id)}
@@ -898,7 +898,7 @@ export default function CatalogPanel({ activeCatalogId, onSelectCatalog }) {
                                       </>
                                     ) : (
                                       <button onClick={() => setConfirmDeleteProduct(p.id)}
-                                        className="text-xs text-gray-300 hover:text-red-400 px-1" title="Supprimer">🗑</button>
+                                        className="text-xs text-gray-300 hover:text-red-400 px-1" title={t.deleteTitle}>🗑</button>
                                     )}
                                   </div>
                                 </div>
