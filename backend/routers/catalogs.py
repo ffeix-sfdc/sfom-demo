@@ -24,6 +24,8 @@ _CATALOG_DEFAULTS = {
     "de_setup_name": "",
     "de_carrier_name": "",
     "de_carrier_methods": [],
+    "de_default_country": "",
+    "de_default_postal_code": "",
     "webstore_id": "",
     "sales_channel_id": "",
     "payment_gateway_id": "",
@@ -69,6 +71,8 @@ def _list_catalogs() -> list:
                 "de_setup_name": data.get("de_setup_name", ""),
                 "de_carrier_name": data.get("de_carrier_name", ""),
                 "de_carrier_methods": data.get("de_carrier_methods", []),
+                "de_default_country": data.get("de_default_country", ""),
+                "de_default_postal_code": data.get("de_default_postal_code", ""),
                 "webstore_id": data.get("webstore_id", ""),
                 "sales_channel_id": data.get("sales_channel_id", ""),
                 "pickup_delivery_method_id": data.get("pickup_delivery_method_id", ""),
@@ -99,6 +103,8 @@ class CatalogIn(BaseModel):
     de_setup_name: Optional[str] = ""
     de_carrier_name: Optional[str] = ""
     de_carrier_methods: Optional[List[dict]] = []
+    de_default_country: Optional[str] = ""
+    de_default_postal_code: Optional[str] = ""
     # checkout defaults
     webstore_id: Optional[str] = ""
     sales_channel_id: Optional[str] = ""
@@ -164,6 +170,8 @@ def create_catalog(body: CatalogIn):
         "de_setup_name": body.de_setup_name or "",
         "de_carrier_name": body.de_carrier_name or "",
         "de_carrier_methods": body.de_carrier_methods or [],
+        "de_default_country": body.de_default_country or "",
+        "de_default_postal_code": body.de_default_postal_code or "",
         "webstore_id": body.webstore_id or "",
         "sales_channel_id": body.sales_channel_id or "",
         "pickup_delivery_method_id": body.pickup_delivery_method_id or "",
@@ -201,6 +209,8 @@ def update_catalog(catalog_id: int, body: CatalogIn):
     catalog["de_setup_name"] = body.de_setup_name or ""
     catalog["de_carrier_name"] = body.de_carrier_name or ""
     catalog["de_carrier_methods"] = body.de_carrier_methods or []
+    catalog["de_default_country"] = body.de_default_country or ""
+    catalog["de_default_postal_code"] = body.de_default_postal_code or ""
     catalog["webstore_id"] = body.webstore_id or ""
     catalog["sales_channel_id"] = body.sales_channel_id or ""
     catalog["pickup_delivery_method_id"] = body.pickup_delivery_method_id or ""

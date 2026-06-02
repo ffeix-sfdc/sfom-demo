@@ -189,14 +189,18 @@ def _slot_cache_key(config_id: Optional[str], location_ref: Optional[str], date_
 
 
 async def _prefetch_days(alias: str, config_id: Optional[str], location_ref: Optional[str], from_date: str, days: int = 5):
+    import asyncio
     base = datetime.strptime(from_date, "%Y-%m-%d").date()
-    for i in range(1, days + 1):
-        d = (base + timedelta(days=i)).isoformat()
+    dates = [(base + timedelta(days=i)).isoformat() for i in range(1, days + 1)]
+
+    async def _fetch_one(d: str):
         key = _slot_cache_key(config_id, location_ref, d)
         try:
             await cached_sf_get(alias, key, _compute_slots, config_id, location_ref, d)
         except Exception:
             pass
+
+    await asyncio.gather(*[_fetch_one(d) for d in dates])
 
 
 @router.get("/slots")

@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, startTransition } from "react";
+import { flushSync } from "react-dom";
 import api from "../api/client";
 import { cachedGet } from "../api/orgCache";
 import { getSlots } from "../api/slotCache";
@@ -207,7 +208,7 @@ async function resolvePickupSlot(storeExtRef, earliestISO) {
 // checked / onChange / onPickupStore: controlled by parent
 // onPickupStore({ storeExtRef, storeName, pickupTime }) — called when user picks a store (geo mode)
 // onPickupTime(isoString) — called when single-store slot is resolved
-function BopisPickup({ sku, storeId, storeExtRef, storeName: storeNameProp, deSetupName, lgId, lgExtRef, catalogTransferDmId, checked, onChange, onPickupTime, onPickupStore }) {
+function BopisPickup({ sku, storeId, storeExtRef, storeName: storeNameProp, deSetupName, lgId, lgExtRef, catalogTransferDmId, checked, onChange, onPickupTime, onPickupStore, deDefaultCountry, deDefaultPostalCode }) {
   const { t, lang } = useLang();
   const locale = LANG_LOCALE[lang] || "en-GB";
   // single-store state
@@ -303,20 +304,23 @@ function BopisPickup({ sku, storeId, storeExtRef, storeName: storeNameProp, deSe
         );
         lat = pos.coords.latitude;
         lng = pos.coords.longitude;
-      } catch { setGeoState("error"); return; }
+      } catch { /* no geo — skip BOPIS radius, go straight to fallback */ }
 
       try {
-        const deRes = await api.post("/delivery-estimate", {
-          operation: "bopis",
-          deliveryEstimationSetupName: deSetupName,
-          products: [{ stockKeepingUnit: sku, quantity: 1 }],
-          locations: [],
-          radius: 500,
-          unit: "km",
-          maxReturnedLocations: 5,
-          bopisAddress: { latitude: lat, longitude: lng },
-        });
-        const results = deRes.data?.result?.results || [];
+        let results = [];
+        if (lat !== null && lng !== null) {
+          const deRes = await api.post("/delivery-estimate", {
+            operation: "bopis",
+            deliveryEstimationSetupName: deSetupName,
+            products: [{ stockKeepingUnit: sku, quantity: 1 }],
+            locations: [],
+            radius: 500,
+            unit: "km",
+            maxReturnedLocations: 5,
+            bopisAddress: { latitude: lat, longitude: lng },
+          });
+          results = deRes.data?.result?.results || [];
+        }
 
         // Build sfLocations: full org locations (has VisitorAddress) filtered to LG Store members
         let sfLocations = [];
@@ -379,9 +383,7 @@ function BopisPickup({ sku, storeId, storeExtRef, storeName: storeNameProp, deSe
               } catch { /* fall back to DE date */ baseISO = hit?.inStore?.earliestPickupTime || null; }
             }
 
-            let resolvedSlot = baseISO || null;
-            if (baseISO) resolvedSlot = await resolvePickupSlot(sfLoc.ExternalReference, baseISO);
-            return { extRef, name: locationName, atf, ato, pickupTime: resolvedSlot, isTransfer };
+            return { extRef, name: locationName, atf, ato, pickupTime: baseISO || null, isTransfer, _resolveSlot: baseISO ? sfLoc.ExternalReference : null, _resolveBase: baseISO };
           });
           return (await Promise.all(promises)).filter(Boolean);
         };
@@ -389,28 +391,36 @@ function BopisPickup({ sku, storeId, storeExtRef, storeName: storeNameProp, deSe
         // First try: geo results with ATF/ATO > 0
         let storeList = results.length ? await buildStoreList(results, false) : [];
 
+        // Capture resolve metadata before stripping for geo results
+        const geoResolveList = storeList
+          .map((store, i) => store._resolveSlot ? { i, ref: store._resolveSlot, base: store._resolveBase } : null)
+          .filter(Boolean);
+        storeList = storeList.map(({ _resolveSlot: _s, _resolveBase: _b, ...rest }) => rest);
+
         // Fallback: if no stores from geo (or all geo hits were non-Store locations),
         // use delivery-date to get estimated arrival, then show all Store-type locations
         // with that date +1 day as pickup basis (transfer mode)
         if (!storeList.length) {
           try {
-            // Reverse-geocode lat/lng → postalCode + countryCode via Nominatim
+            // Reverse-geocode lat/lng → postalCode + countryCode via Nominatim (only if geo available)
             let postalCode = "";
             let countryCode = "";
-            try {
-              const geoResp = await fetch(
-                `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
-                { headers: { "Accept-Language": "en" } }
-              );
-              const geoJson = await geoResp.json();
-              postalCode = geoJson?.address?.postcode || "";
-              countryCode = geoJson?.address?.country_code?.toUpperCase() || "";
-            } catch { /* proceed with empty address */ }
+            if (lat !== null && lng !== null) {
+              try {
+                const geoResp = await fetch(
+                  `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
+                  { headers: { "Accept-Language": "en" } }
+                );
+                const geoJson = await geoResp.json();
+                postalCode = geoJson?.address?.postcode || "";
+                countryCode = geoJson?.address?.country_code?.toUpperCase() || "";
+              } catch { /* proceed with empty address */ }
+            }
 
             // Get ATO future date from OCI LG futures, fallback to delivery-date DE
             let maxDeliveryISO = null;
 
-            // 1. Try OCI LG availability futures for this SKU
+            // 1. Try OCI LG availability — abort if product truly unavailable (no ATF, no ATO, no futures)
             try {
               const atoRes = await api.post("/oci/availability", {
                 items: [{ sku, quantity: 1, location_group_identifier: lgExtRef, location_identifier: "" }],
@@ -421,10 +431,17 @@ function BopisPickup({ sku, storeId, storeExtRef, storeName: storeNameProp, deSe
               for (const loc of r.locations || []) records.push(...(loc.availabilityRecords || loc.inventoryRecords || []));
               records.push(...(r.availabilityRecords || r.inventoryRecords || []));
               const skuRec = records.find((rec) => rec.stockKeepingUnit === sku);
+              const atfLg = skuRec?.availableToFulfill ?? 0;
+              const atoLg = skuRec?.availableToOrder ?? 0;
               const futures = skuRec?.futures || [];
+              if (atfLg <= 0 && atoLg <= 0 && !futures.length) {
+                // Product genuinely out of stock — don't show transfer stores
+                storeList = [];
+                throw new Error("out-of-stock");
+              }
               const earliest = futures.map((f) => f.expectedDate || f.date || "").filter(Boolean).sort()[0];
               if (earliest) maxDeliveryISO = earliest;
-            } catch { /* fall through to DE */ }
+            } catch (e) { if (e?.message === "out-of-stock") throw e; /* else fall through to DE */ }
 
             // 2. If OCI returned no future date, try delivery-date DE
             if (!maxDeliveryISO) {
@@ -433,7 +450,7 @@ function BopisPickup({ sku, storeId, storeExtRef, storeName: storeNameProp, deSe
                   operation: "delivery-date",
                   deliveryEstimationSetupName: deSetupName,
                   products: [{ stockKeepingUnit: sku, quantity: 1 }],
-                  deliveryAddress: { country: countryCode, state: "", city: "", postalCode },
+                  deliveryAddress: { country: countryCode || deDefaultCountry || "", state: "", city: "", postalCode: postalCode || deDefaultPostalCode || "" },
                 });
                 const deliveryEstimates = ddRes.data?.result?.deliveryEstimates || [];
                 for (const dg of deliveryEstimates) {
@@ -461,28 +478,68 @@ function BopisPickup({ sku, storeId, storeExtRef, storeName: storeNameProp, deSe
             transferBase.setDate(transferBase.getDate() + 1);
             const transferBaseISO = transferBase.toISOString();
 
-            // Show all Store-type SF locations with transfer date
+            // Show all Store-type SF locations immediately with base transfer date,
+            // then resolve slots asynchronously per store
             const storeLocs = sfLocations.filter((l) => l.LocationType === "Store" && l.ExternalReference);
 
-            const transferPromises = storeLocs.map(async (sfLoc) => {
+            storeList = storeLocs.map((sfLoc) => {
               const city = sfLoc?.VisitorAddress?.City || "";
-              const locationName = city ? `${sfLoc.Name} - ${city}` : sfLoc.Name;
-              const resolvedSlot = await resolvePickupSlot(sfLoc.ExternalReference, transferBaseISO);
               return {
                 extRef: sfLoc.ExternalReference,
-                name: locationName,
+                name: city ? `${sfLoc.Name} - ${city}` : sfLoc.Name,
                 atf: 0,
                 ato: 1,
-                pickupTime: resolvedSlot,
+                pickupTime: transferBaseISO,
                 isTransfer: true,
+                slotLoading: true,
+                _storeLocs: storeLocs,
+                _transferBaseISO: transferBaseISO,
               };
             });
-            storeList = await Promise.all(transferPromises);
-          } catch { /* ignore fallback errors */ }
+          } catch (e) { if (e?.message === "out-of-stock") { /* storeList already [] */ } }
         }
 
-        setNearbyStores(storeList);
-        setGeoState("done");
+        const cleanList = storeList.map(({ _resolveSlot: _s, _resolveBase: _b, _storeLocs: _sl, _transferBaseISO: _tb, ...rest }) => rest);
+        // Capture resolve metadata before stripping
+        const storeLocs = storeList[0]?._storeLocs || null;
+        const transferBaseISO = storeList[0]?._transferBaseISO || null;
+
+        // Force React to paint the stores immediately before resolving slots
+        flushSync(() => {
+          setNearbyStores(cleanList);
+          setGeoState("done");
+        });
+
+        // Slots resolve after the paint — each .then() triggers its own re-render
+        if (geoResolveList.length) {
+          geoResolveList.forEach(({ i, ref, base }) => {
+            resolvePickupSlot(ref, base).then((resolvedSlot) => {
+              setNearbyStores((prev) => {
+                const next = [...prev];
+                if (next[i]) next[i] = { ...next[i], pickupTime: resolvedSlot };
+                return next;
+              });
+            }).catch(() => {});
+          });
+        }
+
+        if (storeLocs && transferBaseISO) {
+          storeLocs.forEach((sfLoc, i) => {
+            resolvePickupSlot(sfLoc.ExternalReference, transferBaseISO).then((resolvedSlot) => {
+              setNearbyStores((prev) => {
+                const next = [...prev];
+                if (next[i]) next[i] = { ...next[i], pickupTime: resolvedSlot, slotLoading: false };
+                return next;
+              });
+            }).catch(() => {
+              setNearbyStores((prev) => {
+                const next = [...prev];
+                if (next[i]) next[i] = { ...next[i], slotLoading: false };
+                return next;
+              });
+            });
+          });
+        }
       } catch { setGeoState("done"); setNearbyStores([]); }
     };
     run();
@@ -587,7 +644,10 @@ function BopisPickup({ sku, storeId, storeExtRef, storeName: storeNameProp, deSe
             <p className={`text-xs font-semibold ${isTransfer ? "text-purple-800" : "text-green-800"}`}>
               {isTransfer ? t.ecomPickupTransfer : t.ecomPickupInStore} · {selectedNearby.name}
             </p>
-            {dt && <p className={`text-xs ${isTransfer ? "text-purple-700" : "text-green-700"}`}>{t.ecomPickupAvailableFrom(dateLabel, timeLabel)}</p>}
+            {selectedNearby.slotLoading
+              ? <p className="text-xs italic text-gray-400">Searching pickup slot…</p>
+              : dt && <p className={`text-xs ${isTransfer ? "text-purple-700" : "text-green-700"}`}>{t.ecomPickupAvailableFrom(dateLabel, timeLabel)}</p>
+            }
           </div>
           <button type="button" onClick={() => { setSelectedNearby(null); onChange?.(false); }} className="text-gray-400 hover:text-red-400 text-sm leading-none shrink-0">×</button>
         </label>
@@ -614,13 +674,21 @@ function BopisPickup({ sku, storeId, storeExtRef, storeName: storeNameProp, deSe
             ? "bg-purple-600 text-white hover:bg-purple-700"
             : available ? "bg-green-600 text-white hover:bg-green-700" : "bg-blue-500 text-white hover:bg-blue-600";
           return (
-            <div key={s.extRef} className={`border rounded-lg px-3 py-2 flex items-start gap-3 ${colorCls}`}>
+            <div key={s.extRef} className={`border rounded-lg px-3 py-2 flex items-center gap-2 ${colorCls}`}>
+              <svg xmlns="http://www.w3.org/2000/svg" className={`w-4 h-4 shrink-0 ${isTransfer ? "text-purple-500" : available ? "text-green-500" : "text-blue-500"}`} viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd"/>
+              </svg>
               <div className="flex-1 min-w-0">
-                <p className={`text-xs font-semibold ${textCls}`}>{s.name}</p>
-                <p className="text-xs text-gray-500">
+                <p className={`text-[10px] font-medium truncate ${isTransfer ? "text-purple-500" : available ? "text-green-600" : "text-blue-500"}`}>{s.name}</p>
+                <p className={`text-xs font-medium ${textCls}`}>
                   {available ? t.ecomPickupAtf(s.atf) : t.ecomPickupAto(s.ato)}
-                  {dt && <span className="ml-2">{t.ecomPickupAvailableFrom(dateLabel, timeLabel)}</span>}
                 </p>
+                {s.slotLoading
+                  ? <p className="text-[10px] text-gray-400 mt-0.5">Searching pickup slot…</p>
+                  : dt
+                    ? <p className="text-[10px] font-medium mt-0.5 text-orange-600">📦 {t.ecomPickupAvailableFrom(dateLabel, timeLabel)}</p>
+                    : null
+                }
               </div>
               <button
                 type="button"
@@ -856,7 +924,7 @@ function PLPView({ catalog, products, categories, cart, onAddToCart, onGoToPDP, 
 // after the estimatedShipDate for each method and lets the user pick a method.
 // onSelectMethod(methodRef, methodName, tmsBooking|null) — called when user picks a method.
 // selectedMethodRef — currently selected method (controlled externally).
-function HomeDelivery({ product, deSetupName, deCarrierName, deCarrierMethods, onSelectMethod, selectedMethodRef }) {
+function HomeDelivery({ product, deSetupName, deCarrierName, deCarrierMethods, deDefaultCountry, deDefaultPostalCode, onSelectMethod, selectedMethodRef }) {
   const { t, lang } = useLang();
   const locale = LANG_LOCALE[lang] || "en-GB";
   const sku = product?.sku || "";
@@ -870,26 +938,14 @@ function HomeDelivery({ product, deSetupName, deCarrierName, deCarrierMethods, o
     setState("loading");
 
     (async () => {
-      let postalCode = "";
-      let countryCode = "";
-      try {
-        const pos = await new Promise((res, rej) =>
-          navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 })
-        );
-        const geoResp = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json`,
-          { headers: { "Accept-Language": "en" } }
-        );
-        const geoJson = await geoResp.json();
-        postalCode = geoJson?.address?.postcode || "";
-        countryCode = geoJson?.address?.country_code?.toUpperCase() || "";
-      } catch { /* proceed with empty address */ }
-
       try {
         const methods = Array.isArray(deCarrierMethods) ? deCarrierMethods : [];
         const carrier = deCarrierName && methods.length
           ? { shippingCarrier: { name: deCarrierName, methods: methods.map((m) => ({ name: m.ref })) } }
           : {};
+        const postalCode = deDefaultPostalCode || "";
+        const countryCode = deDefaultCountry || "";
+
         const payload = {
           operation: "delivery-date",
           deliveryEstimationSetupName: deSetupName,
@@ -900,6 +956,9 @@ function HomeDelivery({ product, deSetupName, deCarrierName, deCarrierMethods, o
         const ddRes = await api.post("/delivery-estimate", payload);
         if (cancelled) return;
 
+        // Build a ref→method map so CDS response order doesn't matter
+        const methodByRef = Object.fromEntries(methods.map((m) => [m.ref, m]));
+
         const raw = [];
         const estimates = ddRes.data?.result?.deliveryEstimates || [];
         for (const dg of estimates) {
@@ -907,17 +966,22 @@ function HomeDelivery({ product, deSetupName, deCarrierName, deCarrierMethods, o
             for (const sm of grp.shippingMethods || []) {
               const mx = sm.estimatedDeliveryDate?.max || null;
               if (!mx) continue;
-              raw.push({ min: sm.estimatedDeliveryDate?.min || null, max: mx });
+              const ref = sm.shippingCarrierMethod || "";
+              const method = methodByRef[ref] || methods.find((m) => m.ref === ref) || {};
+              raw.push({
+                min: sm.estimatedDeliveryDate?.min || null,
+                max: mx,
+                ref,
+                name: method.name || method.ref || ref,
+              });
             }
           }
         }
 
-        const results = raw.map((r, i) => ({
+        const results = raw.map((r) => ({
           ...r,
-          name: methods[i]?.name || methods[i]?.ref || "",
-          ref: methods[i]?.ref || "",
           tmsSlot: null,
-          tmsLoading: requireTms && !!(methods[i]?.ref),
+          tmsLoading: requireTms && !!r.ref,
         }));
 
         if (results.length) {
@@ -928,7 +992,8 @@ function HomeDelivery({ product, deSetupName, deCarrierName, deCarrierMethods, o
           if (requireTms) {
             results.forEach((r, i) => {
               if (!r.ref) return;
-              const afterDate = r.max ? new Date(r.max) : new Date();
+              // Use start-of-day so TMS windows on the delivery date aren't filtered by time
+              const afterDate = r.max ? new Date(r.max.slice(0, 10) + "T00:00:00") : new Date();
               findFirstAvailableTmsSlot(r.ref, afterDate).then((slot) => {
                 if (cancelled) return;
                 setMethodResults((prev) => {
@@ -960,8 +1025,9 @@ function HomeDelivery({ product, deSetupName, deCarrierName, deCarrierMethods, o
   const fmtDate = (iso) => new Date(iso).toLocaleDateString(locale, { weekday: "short", day: "numeric", month: "short" });
   const fmtSlot = (slot) => {
     if (!slot) return null;
-    const d = new Date(slot.date + "T00:00:00");
-    return `${d.toLocaleDateString(locale, { weekday: "short", day: "numeric", month: "short" })} ${slot.windowStart}`;
+    const [y, m, d] = slot.date.split("-").map(Number);
+    const dt = new Date(y, m - 1, d);
+    return `${dt.toLocaleDateString(locale, { weekday: "short", day: "numeric", month: "short" })} ${slot.windowStart}`;
   };
 
   if (state === "loading") {
@@ -1021,7 +1087,7 @@ function HomeDelivery({ product, deSetupName, deCarrierName, deCarrierMethods, o
                   r.tmsLoading
                     ? <p className="text-[10px] text-gray-400 mt-0.5">Searching delivery slot…</p>
                     : r.tmsSlot
-                      ? <p className="text-[10px] text-orange-600 font-medium mt-0.5">📦 Slot: {fmtSlot(r.tmsSlot)}</p>
+                      ? <p className="text-[10px] text-orange-600 font-medium mt-0.5">🚚 Slot: {fmtSlot(r.tmsSlot)}</p>
                       : <p className="text-[10px] text-red-500 mt-0.5">No delivery slot available</p>
                 )}
               </div>
@@ -1040,7 +1106,7 @@ function HomeDelivery({ product, deSetupName, deCarrierName, deCarrierMethods, o
 
 // ── PDP — Product Detail Page ─────────────────────────────────────────────────
 
-function PDPView({ product, categories, catalog, onAddToCart, onBack, onGoToCart, cart, hasLg, storeName, onChangeStore, inventory, inventoryLoading, onRefreshInventory, storeId, storeExtRef, lgId, lgExtRef, deSetupName, deCarrierName, deCarrierMethods }) {
+function PDPView({ product, categories, catalog, onAddToCart, onBack, onGoToCart, cart, hasLg, storeName, onChangeStore, inventory, inventoryLoading, onRefreshInventory, storeId, storeExtRef, lgId, lgExtRef, deSetupName, deCarrierName, deCarrierMethods, deDefaultCountry, deDefaultPostalCode }) {
   const { t } = useLang();
   const [qty, setQty] = useState(1);
   const [pickupChecked, setPickupChecked] = useState(false);
@@ -1120,28 +1186,43 @@ function PDPView({ product, categories, catalog, onAddToCart, onBack, onGoToCart
               )}
             </div>
 
-            <BopisPickup
-              sku={product.sku}
-              storeId={storeId}
-              storeExtRef={storeExtRef}
-              lgId={lgId}
-              lgExtRef={lgExtRef}
-              catalogTransferDmId={catalog?.transfer_delivery_method_id || ""}
-              deSetupName={deSetupName}
-              checked={pickupChecked}
-              onChange={setPickupChecked}
-              onPickupTime={setResolvedPickupTime}
-              onPickupStore={(s) => { setResolvedPickupStore(s); }}
-            />
+            {(() => {
+              const inv = inventory?.[product.sku];
+              // Only show delivery options if inventory is not yet loaded (null) or product has stock/futures
+              const hasStock = !inv || inv.aft > 0 || inv.ato > 0 || (inv.futures?.length > 0);
+              return hasStock ? (
+                <>
+                  <BopisPickup
+                    sku={product.sku}
+                    storeId={storeId}
+                    storeExtRef={storeExtRef}
+                    lgId={lgId}
+                    lgExtRef={lgExtRef}
+                    catalogTransferDmId={catalog?.transfer_delivery_method_id || ""}
+                    deSetupName={deSetupName}
+                    checked={pickupChecked}
+                    onChange={setPickupChecked}
+                    onPickupTime={setResolvedPickupTime}
+                    onPickupStore={(s) => { setResolvedPickupStore(s); }}
+                    deDefaultCountry={deDefaultCountry}
+                    deDefaultPostalCode={deDefaultPostalCode}
+                  />
 
-            <HomeDelivery
-              product={product}
-              deSetupName={deSetupName}
-              deCarrierName={deCarrierName}
-              deCarrierMethods={deCarrierMethods}
-              onSelectMethod={handleSelectShippingMethod}
-              selectedMethodRef={selectedShippingMethod}
-            />
+                  <HomeDelivery
+                    product={product}
+                    deSetupName={deSetupName}
+                    deCarrierName={deCarrierName}
+                    deCarrierMethods={deCarrierMethods}
+                    deDefaultCountry={deDefaultCountry}
+                    deDefaultPostalCode={deDefaultPostalCode}
+                    onSelectMethod={handleSelectShippingMethod}
+                    selectedMethodRef={selectedShippingMethod}
+                  />
+                </>
+              ) : (
+                <p className="text-xs text-gray-400 mt-2">{t.ecomOutOfStock}</p>
+              );
+            })()}
 
             <div className="space-y-2">
               <p className="text-xs font-medium text-gray-500">{t.ecomDescription}</p>
@@ -2115,6 +2196,8 @@ export default function EcomForm() {
           default_tax_rate: fresh.default_tax_rate ?? 0,
           de_carrier_name: fresh.de_carrier_name || "",
           de_carrier_methods: Array.isArray(fresh.de_carrier_methods) ? fresh.de_carrier_methods : [],
+          de_default_country: fresh.de_default_country || "",
+          de_default_postal_code: fresh.de_default_postal_code || "",
         }));
       })
       .catch(() => {});
@@ -2169,6 +2252,8 @@ export default function EcomForm() {
       standard_shipping_tax_rate: cat.standard_shipping_tax_rate ?? 5,
       de_carrier_name: cat.de_carrier_name || "",
       de_carrier_methods: Array.isArray(cat.de_carrier_methods) ? cat.de_carrier_methods : [],
+      de_default_country: cat.de_default_country || "",
+      de_default_postal_code: cat.de_default_postal_code || "",
     }));
     setStoreId(""); setStoreName(""); setStoreExtRef("");
     sessionStorage.removeItem(SESSION_STORE_ID);
@@ -2363,6 +2448,8 @@ export default function EcomForm() {
           deSetupName={catalog?.de_setup_name || ""}
           deCarrierName={catalog?.de_carrier_name || ""}
           deCarrierMethods={Array.isArray(catalog?.de_carrier_methods) ? catalog.de_carrier_methods : []}
+          deDefaultCountry={catalog?.de_default_country || ""}
+          deDefaultPostalCode={catalog?.de_default_postal_code || ""}
         />
       )}
 

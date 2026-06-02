@@ -118,6 +118,11 @@ const t = {
     expiryYear: "Expiry Year",
     processingMode: "Processing Mode",
     gatewayToken: "Gateway Token",
+    giftCardSection: "Gift Card (partial payment)",
+    giftCardNumber: "Gift Card Number",
+    giftCardPin: "PIN (optional)",
+    giftCardAmount: "Gift Card Amount",
+    creditCardAmount: "Credit Card Amount",
 
     promotionSection: "Promotion (optional)",
     promotionNone: "None",
@@ -205,6 +210,7 @@ const t = {
 
     // EcomForm — BOPIS pickup
     ecomCheckingPickup: "Checking pickup availability…",
+    ecomOutOfStock: "This product is currently out of stock",
     ecomPickupNoStock: "This product is not available for in-store pickup",
     ecomPickupError: "Pickup unavailable for this store",
     ecomPickupInStore: "Pickup in store",
@@ -408,6 +414,11 @@ const t = {
     expiryYear: "Année d'expiration",
     processingMode: "Mode de traitement",
     gatewayToken: "Token de passerelle",
+    giftCardSection: "Carte cadeau (paiement partiel)",
+    giftCardNumber: "Numéro de carte cadeau",
+    giftCardPin: "PIN (optionnel)",
+    giftCardAmount: "Montant carte cadeau",
+    creditCardAmount: "Montant carte de crédit",
 
     promotionSection: "Promotion (optionnel)",
     promotionNone: "Aucune",
@@ -488,6 +499,7 @@ const t = {
 
     // EcomForm — BOPIS pickup
     ecomCheckingPickup: "Vérification de la disponibilité en magasin…",
+    ecomOutOfStock: "Ce produit est actuellement en rupture de stock",
     ecomPickupNoStock: "Ce produit n'est pas disponible au retrait en magasin",
     ecomPickupError: "Retrait indisponible pour ce magasin",
     ecomPickupInStore: "Retrait en magasin",
@@ -691,6 +703,11 @@ const t = {
     expiryYear: "Año de expiración",
     processingMode: "Modo de procesamiento",
     gatewayToken: "Token de pasarela",
+    giftCardSection: "Tarjeta regalo (pago parcial)",
+    giftCardNumber: "Número de tarjeta regalo",
+    giftCardPin: "PIN (opcional)",
+    giftCardAmount: "Importe tarjeta regalo",
+    creditCardAmount: "Importe tarjeta de crédito",
 
     promotionSection: "Promoción (opcional)",
     promotionNone: "Ninguna",
@@ -771,6 +788,7 @@ const t = {
 
     // EcomForm — BOPIS pickup
     ecomCheckingPickup: "Verificando disponibilidad en tienda…",
+    ecomOutOfStock: "Este producto está actualmente agotado",
     ecomPickupNoStock: "Este producto no está disponible para recogida en tienda",
     ecomPickupError: "Recogida no disponible en esta tienda",
     ecomPickupInStore: "Recogida en tienda",

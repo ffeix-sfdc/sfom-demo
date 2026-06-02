@@ -137,6 +137,8 @@ export default function CatalogPanel({ activeCatalogId, onSelectCatalog }) {
   const [catalogStandardTaxRate, setCatalogStandardTaxRate] = useState("5");
   const [catalogDefaultTaxRate, setCatalogDefaultTaxRate] = useState("0");
   const [locationGroups, setLocationGroups] = useState([]);
+  const [catalogDeDefaultCountry, setCatalogDeDefaultCountry] = useState("");
+  const [catalogDeDefaultPostalCode, setCatalogDeDefaultPostalCode] = useState("");
   const [deSetupNames, setDeSetupNames] = useState([]);
   const [webstores, setWebstores] = useState([]);
   const [salesChannels, setSalesChannels] = useState([]);
@@ -240,6 +242,8 @@ export default function CatalogPanel({ activeCatalogId, onSelectCatalog }) {
     setCatalogDeSetupName(cat.de_setup_name || "");
     setCatalogDeCarrierName(cat.de_carrier_name || "");
     setCatalogDeCarrierMethods(Array.isArray(cat.de_carrier_methods) ? cat.de_carrier_methods : []);
+    setCatalogDeDefaultCountry(cat.de_default_country || "");
+    setCatalogDeDefaultPostalCode(cat.de_default_postal_code || "");
     setCatalogWebstoreId(cat.webstore_id || "");
     setCatalogSalesChannelId(cat.sales_channel_id || "");
     setCatalogPaymentGatewayId(cat.payment_gateway_id || "");
@@ -274,6 +278,8 @@ export default function CatalogPanel({ activeCatalogId, onSelectCatalog }) {
       de_setup_name: catalogDeSetupName,
       de_carrier_name: catalogDeCarrierName,
       de_carrier_methods: catalogDeCarrierMethods,
+      de_default_country: catalogDeDefaultCountry,
+      de_default_postal_code: catalogDeDefaultPostalCode,
       webstore_id: catalogWebstoreId,
       sales_channel_id: catalogSalesChannelId,
       payment_gateway_id: catalogPaymentGatewayId,
@@ -534,6 +540,16 @@ export default function CatalogPanel({ activeCatalogId, onSelectCatalog }) {
                   inputCls={inputCls}
                 />
               </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-gray-500">DE Default Country <span className="text-gray-400 font-normal">(required by CDS)</span></p>
+                  <input className={inputCls} placeholder="e.g. US" maxLength={2} value={catalogDeDefaultCountry} onChange={(e) => setCatalogDeDefaultCountry(e.target.value.toUpperCase())} />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-gray-500">DE Default Postal Code</p>
+                  <input className={inputCls} placeholder="e.g. 10001" value={catalogDeDefaultPostalCode} onChange={(e) => setCatalogDeDefaultPostalCode(e.target.value)} />
+                </div>
+              </div>
               <div className="border-t pt-2 mt-1 space-y-2">
                 <p className="text-xs font-semibold text-gray-600">Checkout Defaults</p>
                 <div className="space-y-1">
@@ -680,6 +696,16 @@ export default function CatalogPanel({ activeCatalogId, onSelectCatalog }) {
                             onRemove={(i) => setCatalogDeCarrierMethods((prev) => prev.filter((_, idx) => idx !== i))}
                             inputCls={inputCls}
                           />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <p className="text-xs font-medium text-gray-500">DE Default Country <span className="text-gray-400 font-normal">(required by CDS)</span></p>
+                            <input className={inputCls} placeholder="e.g. US" maxLength={2} value={catalogDeDefaultCountry} onChange={(e) => setCatalogDeDefaultCountry(e.target.value.toUpperCase())} />
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-xs font-medium text-gray-500">DE Default Postal Code</p>
+                            <input className={inputCls} placeholder="e.g. 10001" value={catalogDeDefaultPostalCode} onChange={(e) => setCatalogDeDefaultPostalCode(e.target.value)} />
+                          </div>
                         </div>
                         <div className="border-t pt-2 mt-1 space-y-2">
                           <p className="text-xs font-semibold text-gray-600">Checkout Defaults</p>

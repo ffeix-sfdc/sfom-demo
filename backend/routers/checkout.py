@@ -42,6 +42,12 @@ class CheckoutPayment(BaseModel):
     amount: float
 
 
+class CheckoutGiftCardPayment(BaseModel):
+    gift_card_number: str
+    gift_card_pin: str = ""
+    amount: float
+
+
 class CheckoutRequest(BaseModel):
     webstore_id: str
     account_id: str
@@ -50,8 +56,40 @@ class CheckoutRequest(BaseModel):
     bill_to_address: Optional[CheckoutAddress] = None
     delivery_method_id: str = ""
     items: list[CheckoutItem]
-    payment: CheckoutPayment
+    payment: Optional[CheckoutPayment] = None
+    gift_card_payment: Optional[CheckoutGiftCardPayment] = None
     order_reference: str = ""
+
+
+def _build_payments(body: "CheckoutRequest") -> list:
+    payments = []
+    if body.payment:
+        p = body.payment
+        payments.append({
+            "paymentGatewayId": p.payment_gateway_id,
+            "gatewayToken": p.gateway_token,
+            "cardPaymentMethod": {
+                "cardType": p.card_type,
+                "cardHolderName": p.card_holder_name,
+                "cardNumber": p.masked_card_number,
+                "expiryYear": p.expiry_year,
+                "expiryMonth": p.expiry_month,
+                "cardCategory": p.card_category,
+            },
+            "amount": p.amount,
+        })
+    if body.gift_card_payment:
+        gc = body.gift_card_payment
+        entry = {
+            "giftCardPaymentMethod": {
+                "giftCardNumber": gc.gift_card_number,
+            },
+            "amount": gc.amount,
+        }
+        if gc.gift_card_pin:
+            entry["giftCardPaymentMethod"]["giftCardPin"] = gc.gift_card_pin
+        payments.append(entry)
+    return payments
 
 
 @router.post("")
@@ -94,19 +132,7 @@ async def create_checkout(body: CheckoutRequest):
             }
             for item in body.items
         ],
-        "payment": {
-            "paymentGatewayId": body.payment.payment_gateway_id,
-            "gatewayToken": body.payment.gateway_token,
-            "cardPaymentMethod": {
-                "cardType": body.payment.card_type,
-                "cardHolderName": body.payment.card_holder_name,
-                "cardNumber": body.payment.masked_card_number,
-                "expiryYear": body.payment.expiry_year,
-                "expiryMonth": body.payment.expiry_month,
-                "cardCategory": body.payment.card_category,
-            },
-            "amount": body.payment.amount,
-        },
+        "payments": _build_payments(body),
     }
     if body.delivery_method_id:
         payload["deliveryMethodId"] = body.delivery_method_id

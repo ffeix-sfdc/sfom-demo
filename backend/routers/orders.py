@@ -249,6 +249,12 @@ class CardPayment(BaseModel):
     amount: float
 
 
+class GiftCardPayment(BaseModel):
+    gift_card_number: str
+    gift_card_pin: str = ""
+    amount: float
+
+
 class PromotionInput(BaseModel):
     name: str
     display_name: str
@@ -305,6 +311,7 @@ class CreateOrderRequest(BaseModel):
 
     # payment
     payment: CardPayment
+    gift_card_payment: Optional[GiftCardPayment] = None
 
     # promotion (optional)
     promotion: Optional[PromotionInput] = None
@@ -557,6 +564,47 @@ def _build_order_payload(body: CreateOrderRequest, acc_result: dict, now_utc: st
             "ReferencedEntityId": "@{PaymentAuthorization_0.id}",
         },
     })
+
+    # Gift card payment (optional, partial)
+    # GiftCardPaymentMethod is not supported in Order Summary Graph API —
+    # AlternativePaymentMethod with Type=GiftCard is the correct sObject.
+    if body.gift_card_payment:
+        gc = body.gift_card_payment
+        purchase_details.append({
+            "referenceId": "OrderPaymentSummary_GC",
+            "attributes": {
+                "attributes": {"type": "OrderPaymentSummary"},
+                "OrderSummaryId": "@{OrderSummary.id}",
+                "CurrencyIsoCode": body.currency_iso_code,
+                "Type": "GiftCard",
+            },
+        })
+        gc_method_attrs: dict = {
+            "attributes": {"type": "AlternativePaymentMethod"},
+            "Type": "GiftCard",
+            "NickName": gc.gift_card_number,
+            "Status": "Active",
+            "ProcessingMode": "External",
+            "AccountId": "@{Account.id}",
+        }
+        purchase_details.append({
+            "referenceId": "GiftCardPaymentMethod_0",
+            "attributes": gc_method_attrs,
+        })
+        purchase_details.append({
+            "referenceId": "PaymentAuthorization_GC",
+            "attributes": {
+                "attributes": {"type": "PaymentAuthorization"},
+                "Amount": gc.amount,
+                "ProcessingMode": "External",
+                "Status": "Processed",
+                "GatewayRefNumber": body.order_reference,
+                "CurrencyIsoCode": body.currency_iso_code,
+                "OrderPaymentSummaryId": "@{OrderPaymentSummary_GC.id}",
+                "AccountId": "@{Account.id}",
+                "PaymentMethodId": "@{GiftCardPaymentMethod_0.id}",
+            },
+        })
 
     # Generic Delivery Charge product (shared across all groups)
     purchase_support.append({

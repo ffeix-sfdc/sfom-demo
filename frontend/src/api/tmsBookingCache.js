@@ -48,7 +48,7 @@ export async function findFirstAvailableTmsSlot(methodRef, afterDate, maxDays = 
   for (let d = 0; d < maxDays; d++) {
     const day = new Date(after);
     day.setDate(day.getDate() + d);
-    const dateStr = day.toISOString().slice(0, 10);
+    const dateStr = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
     try {
       const data = await getTmsSlots(methodRef, dateStr);
       if (!data.operating) continue;
@@ -61,7 +61,7 @@ export async function findFirstAvailableTmsSlot(methodRef, afterDate, maxDays = 
           windowStart.setHours(h, m, 0, 0);
           if (windowStart < after) continue;
         }
-        return { date: dateStr, windowStart: w.start, windowEnd: w.end };
+        return { date: dateStr, windowStart: w.start, windowEnd: w.end };  // dateStr already local-time
       }
     } catch { /* no config for this day */ }
   }

@@ -68,17 +68,26 @@ async def cds_post(path: str, payload: dict) -> dict:
     token = await get_cds_token()
     url = f"{CDS_BASE}{path}"
     corr_id = cfg.get("correlation_id") or str(uuid.uuid4())
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
-        "Correlation-ID": corr_id,
-        "x-salesforce-region": cfg.get("region", "us-east-2"),
-    }
-    if cfg.get("org_short_code"):
-        headers["SALESFORCE_COMMERCE_API"] = cfg["org_short_code"]
+
+    def _build_headers(t: str) -> dict:
+        h = {
+            "Authorization": f"Bearer {t}",
+            "Content-Type": "application/json",
+            "Correlation-ID": corr_id,
+            "x-salesforce-region": cfg.get("region", "us-east-2"),
+        }
+        if cfg.get("org_short_code"):
+            h["SALESFORCE_COMMERCE_API"] = cfg["org_short_code"]
+        return h
 
     async with httpx.AsyncClient() as client:
-        resp = await client.post(url, json=payload, headers=headers)
+        resp = await client.post(url, json=payload, headers=_build_headers(token))
+        if resp.status_code in (401, 403):
+            # Force token refresh and retry once
+            _token_cache["token"] = None
+            _token_cache["expires_at"] = 0
+            token = await get_cds_token()
+            resp = await client.post(url, json=payload, headers=_build_headers(token))
         if not resp.is_success:
             try:
                 detail = resp.json()
@@ -211,14 +220,13 @@ async def get_delivery_estimate(body: DeliveryEstimateRequest):
                 "postalCode": body.deliveryAddress.postalCode if body.deliveryAddress else "",
             },
         }
+        carrier: dict = {"methods": []}
         if body.shippingCarrier:
-            carrier: dict = {}
             if body.shippingCarrier.name:
                 carrier["name"] = body.shippingCarrier.name
             if body.shippingCarrier.methods:
                 carrier["methods"] = [{"name": m.name} for m in body.shippingCarrier.methods]
-            if carrier:
-                payload["shippingCarrier"] = carrier
+        payload["shippingCarrier"] = carrier
         if body.locations:
             payload["locations"] = body.locations
 

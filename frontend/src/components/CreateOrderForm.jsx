@@ -136,6 +136,8 @@ export default function CreateOrderForm({ onOrderCreated, onFormChange, pendingR
 
   const [deliveryGroups, setDeliveryGroups] = useState([emptyDeliveryGroup()]);
   const [products, setProducts] = useState([emptyProduct()]);
+  const [useGiftCard, setUseGiftCard] = useState(false);
+  const [giftCard, setGiftCard] = useState({ gift_card_number: "", gift_card_pin: "", amount: "" });
 
   const fetchCatalogs = () =>
     cachedGet("/catalogs").then(setCatalogs).catch(() => {});
@@ -226,8 +228,8 @@ export default function CreateOrderForm({ onOrderCreated, onFormChange, pendingR
 
   // Notify parent of form/products changes (for use-case save)
   useEffect(() => {
-    onFormChange?.({ ...form, _deliveryGroups: deliveryGroups }, products, selectedAccount);
-  }, [form, deliveryGroups, products, selectedAccount]);
+    onFormChange?.({ ...form, _deliveryGroups: deliveryGroups, _useGiftCard: useGiftCard, _giftCard: giftCard }, products, selectedAccount);
+  }, [form, deliveryGroups, products, selectedAccount, useGiftCard, giftCard]);
 
   // Live OMS payload preview — debounced call to /orders/preview
   useEffect(() => {
@@ -307,8 +309,15 @@ export default function CreateOrderForm({ onOrderCreated, onFormChange, pendingR
         expiry_month: form.expiry_month,
         card_category: form.card_category,
         processing_mode: form.processing_mode,
-        amount: gt,
+        amount: creditAmount,
       },
+      ...(useGiftCard && giftCard.gift_card_number ? {
+        gift_card_payment: {
+          gift_card_number: giftCard.gift_card_number,
+          gift_card_pin: giftCard.gift_card_pin,
+          amount: gcAmount,
+        },
+      } : {}),
       promotion: form.promotion_name
         ? {
             name: form.promotion_name,
@@ -354,7 +363,7 @@ export default function CreateOrderForm({ onOrderCreated, onFormChange, pendingR
         .catch(() => {});
     }, 600);
     return () => clearTimeout(timer);
-  }, [form, deliveryGroups, products, selectedAccount]);
+  }, [form, deliveryGroups, products, selectedAccount, useGiftCard, giftCard]);
 
   // Restore a saved use-case snapshot
   useEffect(() => {
@@ -379,6 +388,10 @@ export default function CreateOrderForm({ onOrderCreated, onFormChange, pendingR
       setSelectedAccount(savedAccount);
       setAccountSearch(savedAccount.Name || "");
     }
+    // Restore gift card state (reset to default if not in snapshot)
+    setUseGiftCard(savedForm?._useGiftCard ?? false);
+    setGiftCard(savedForm?._giftCard ?? { gift_card_number: "", gift_card_pin: "", amount: "" });
+
     // Restore catalog
     const savedCatalogId = savedForm?.catalog_id;
     if (savedCatalogId) {
@@ -579,6 +592,8 @@ export default function CreateOrderForm({ onOrderCreated, onFormChange, pendingR
   const discountTotal = products.reduce((sum, p) => sum + Number(p.discount_amount), 0);
   const shippingTotal = dgCalc.reduce((sum, c) => sum + c.gross, 0);
   const grandTotal    = productTotal + taxTotal - discountTotal + shippingTotal;
+  const gcAmount      = useGiftCard ? Math.min(Number(giftCard.amount) || 0, grandTotal) : 0;
+  const creditAmount  = grandTotal - gcAmount;
 
   const selectedWebstore = webstores.find((w) => w.Id === form.webstore_id);
   const selectedSalesChannel = salesChannels.find((sc) => sc.Id === form.sales_channel_id);
@@ -672,8 +687,15 @@ export default function CreateOrderForm({ onOrderCreated, onFormChange, pendingR
           expiry_month: form.expiry_month,
           card_category: form.card_category,
           processing_mode: form.processing_mode,
-          amount: grandTotal,
+          amount: creditAmount,
         },
+        ...(useGiftCard && giftCard.gift_card_number ? {
+          gift_card_payment: {
+            gift_card_number: giftCard.gift_card_number,
+            gift_card_pin: giftCard.gift_card_pin,
+            amount: gcAmount,
+          },
+        } : {}),
 
         promotion: form.promotion_name
           ? {
@@ -1214,6 +1236,48 @@ export default function CreateOrderForm({ onOrderCreated, onFormChange, pendingR
             <input className={inputCls} {...f("gateway_token")} />
           </div>
         </div>
+      </div>
+
+      {/* ── Gift Card ───────────────────────────────────── */}
+      <div className={sectionCls}>
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold text-gray-700">{t.giftCardSection}</p>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={useGiftCard}
+              onChange={(e) => setUseGiftCard(e.target.checked)}
+              className="rounded" />
+            <span className="text-xs text-gray-500">{useGiftCard ? "Enabled" : "Disabled"}</span>
+          </label>
+        </div>
+        {useGiftCard && (
+          <div className="grid grid-cols-2 gap-3 mt-2">
+            <div className="col-span-2">
+              <label className={labelCls}>{t.giftCardNumber}</label>
+              <input className={inputCls} value={giftCard.gift_card_number}
+                onChange={(e) => setGiftCard((g) => ({ ...g, gift_card_number: e.target.value }))}
+                placeholder="GC-XXXXXXXX" />
+            </div>
+            <div>
+              <label className={labelCls}>{t.giftCardPin}</label>
+              <input className={inputCls} value={giftCard.gift_card_pin}
+                onChange={(e) => setGiftCard((g) => ({ ...g, gift_card_pin: e.target.value }))}
+                placeholder="—" />
+            </div>
+            <div>
+              <label className={labelCls}>{t.giftCardAmount}</label>
+              <input type="number" step="0.01" min="0" max={grandTotal} className={inputCls}
+                value={giftCard.amount}
+                onChange={(e) => setGiftCard((g) => ({ ...g, amount: e.target.value }))}
+                placeholder="0.00" />
+            </div>
+            {gcAmount > 0 && (
+              <div className="col-span-2 bg-blue-50 border border-blue-100 rounded px-3 py-2 text-xs text-blue-700 space-y-0.5">
+                <div className="flex justify-between"><span>{t.giftCardAmount}</span><span>{form.currency_iso_code} {gcAmount.toFixed(2)}</span></div>
+                <div className="flex justify-between"><span>{t.creditCardAmount}</span><span>{form.currency_iso_code} {creditAmount.toFixed(2)}</span></div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Promotion ───────────────────────────────────── */}
