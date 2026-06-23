@@ -28,8 +28,8 @@ class UseCaseIn(BaseModel):
     name: str
     description: Optional[str] = ""
     tab: Optional[str] = "order"
-    form: dict
-    products: list
+    form: Optional[dict] = None
+    products: Optional[list] = None
     account: Optional[dict] = None
 
 
@@ -47,8 +47,8 @@ def create_use_case(body: UseCaseIn):
         "description": body.description or "",
         "tab": body.tab or "order",
         "savedAt": __import__("datetime").datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.000Z"),
-        "form": body.form,
-        "products": body.products,
+        "form": body.form or {},
+        "products": body.products or [],
         "account": body.account,
     }
     data.insert(0, entry)
@@ -68,8 +68,8 @@ def update_use_case(uc_id: int, body: UseCaseIn):
         "description": body.description or "",
         "tab": body.tab or data[idx].get("tab", "order"),
         "savedAt": __import__("datetime").datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.000Z"),
-        "form": body.form,
-        "products": body.products,
+        "form": body.form or {},
+        "products": body.products or [],
         "account": body.account,
     }
     _save(data)

@@ -246,9 +246,7 @@ async def get_plp_availability(body: PlpAvailabilityRequest):
 async def get_locations():
     alias = get_active_alias()
     soql = (
-        "SELECT Id, Name, ExternalReference, LocationType, "
-        "VisitorAddressId, VisitorAddress.Street, VisitorAddress.City, "
-        "VisitorAddress.StateCode, VisitorAddress.PostalCode, VisitorAddress.CountryCode "
+        "SELECT Id, Name, ExternalReference, LocationType "
         "FROM Location WHERE IsInventoryLocation = true AND ShouldSyncWithOci = true AND IsDeleted = false ORDER BY Name"
     )
     result = await cached_sf_get(alias, "oci:locations", sf_get, f"{SF_API}/query", params={"q": soql})
@@ -361,9 +359,7 @@ async def upload_stock_records(body: StockUploadBody):
 async def get_location_group_locations(lg_id: str):
     alias = get_active_alias()
     soql = (
-        f"SELECT Location.Id, Location.Name, Location.ExternalReference, Location.LocationType, "
-        f"Location.VisitorAddress.Street, Location.VisitorAddress.City, "
-        f"Location.VisitorAddress.StateCode, Location.VisitorAddress.PostalCode, Location.VisitorAddress.CountryCode "
+        f"SELECT Location.Id, Location.Name, Location.ExternalReference, Location.LocationType "
         f"FROM LocationGroupAssignment "
         f"WHERE LocationGroup.Id = '{lg_id}' AND Location.IsInventoryLocation = true AND Location.IsDeleted = false "
         f"ORDER BY Location.Name LIMIT 100"
@@ -376,7 +372,7 @@ async def get_location_group_locations(lg_id: str):
             "Name": r["Location"]["Name"],
             "ExternalReference": r["Location"].get("ExternalReference", ""),
             "LocationType": r["Location"].get("LocationType", ""),
-            "VisitorAddress": r["Location"].get("VisitorAddress") or {},
+            "VisitorAddress": {},
         }
         for r in records
         if r.get("Location")

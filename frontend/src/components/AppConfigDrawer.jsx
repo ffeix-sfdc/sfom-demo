@@ -4,8 +4,9 @@ import SlotManagerConfig from "./SlotManagerConfig";
 import TmsConfig from "./TmsConfig";
 import CacheConfig from "./CacheConfig";
 import GeoLocPanel from "./GeoLocPanel";
+import PickupPointConfig from "./PickupPointConfig";
 
-const SUB_TABS = ["Slot Manager", "TMS", "Cache", "Geo Loc"];
+const SUB_TABS = ["Slot Manager", "TMS", "Pickup Points", "Cache", "Geo Loc"];
 
 export default function AppConfigDrawer({ open, onClose, activeOrg, pinned, onTogglePin }) {
   const [activeTab, setActiveTab] = useState("Slot Manager");
@@ -74,6 +75,9 @@ export default function AppConfigDrawer({ open, onClose, activeOrg, pinned, onTo
           </div>
           <div className={activeTab === "TMS" ? "" : "hidden"}>
             <TmsConfig key={`tms-${orgKey}`} open={open} />
+          </div>
+          <div className={activeTab === "Pickup Points" ? "" : "hidden"}>
+            <PickupPointConfig open={open && activeTab === "Pickup Points"} />
           </div>
           <div className={activeTab === "Cache" ? "" : "hidden"}>
             <CacheConfig key={`cache-${orgKey}`} open={open && activeTab === "Cache"} />

@@ -1104,14 +1104,119 @@ function HomeDelivery({ product, deSetupName, deCarrierName, deCarrierMethods, d
   );
 }
 
+// ── Pickup Point Selector ─────────────────────────────────────────────────────
+// Shows a postal-code search box → list of pickup points → selection.
+// onSelect({ id, name, address, city, postalCode, carrier, coordinates }) | null
+
+const SESSION_PP_POSTAL = "ecom_pp_postal_code";
+
+function PickupPointSelector({ defaultCountry, onSelect, selectedPoint }) {
+  const { t } = useLang();
+  const [postalCode, setPostalCode] = useState(() => sessionStorage.getItem(SESSION_PP_POSTAL) || "");
+  const [country] = useState(defaultCountry || "FR");
+  const [results, setResults] = useState(null); // null=not searched, []= no results, [...]= results
+  const [loading, setLoading] = useState(false);
+
+  const search = async (pc) => {
+    const code = (pc ?? postalCode).trim();
+    if (!code) return;
+    setLoading(true);
+    try {
+      const r = await api.get("/pickup-points", { params: { postal_code: code, country } });
+      setResults(r.data || []);
+    } catch { setResults([]); }
+    finally { setLoading(false); }
+  };
+
+  // Auto-search if postal code was previously saved
+  useEffect(() => {
+    if (postalCode.trim() && !selectedPoint) search(postalCode);
+  }, []);
+
+  const DAY_SHORT = { monday: "Mon", tuesday: "Tue", wednesday: "Wed", thursday: "Thu", friday: "Fri", saturday: "Sat", sunday: "Sun" };
+  const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+  const fmtHours = (hours) => {
+    if (!hours) return null;
+    return DAYS.filter((d) => hours[d]).map((d) => `${DAY_SHORT[d]} ${hours[d].open}–${hours[d].close}`).join("  ");
+  };
+
+  if (selectedPoint) {
+    return (
+      <div className="mt-3 pt-3 border-t">
+        <p className="text-xs font-semibold text-gray-600 mb-1.5">{t.pickupPointTitle}</p>
+        <div className="border rounded-lg px-3 py-2 bg-purple-50 border-purple-200 flex items-start gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-purple-500 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd"/>
+          </svg>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-medium text-purple-500 truncate">{selectedPoint.carrier}</p>
+            <p className="text-xs font-medium text-purple-800">{selectedPoint.name}</p>
+            <p className="text-[10px] text-gray-500">{selectedPoint.address}, {selectedPoint.postal_code} {selectedPoint.city}</p>
+          </div>
+          <button type="button" onClick={() => onSelect(null)}
+            className="text-xs text-gray-400 hover:text-red-500 shrink-0 px-1">{t.pickupPointChange}</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 pt-3 border-t">
+      <p className="text-xs font-semibold text-gray-600 mb-1.5">{t.pickupPointTitle}</p>
+      <div className="flex gap-2">
+        <input
+          className="flex-1 border rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#00A1E0]"
+          placeholder={t.pickupPointPostalCode}
+          value={postalCode}
+          onChange={(e) => { setPostalCode(e.target.value); sessionStorage.setItem(SESSION_PP_POSTAL, e.target.value); setResults(null); }}
+          onKeyDown={(e) => e.key === "Enter" && search()}
+        />
+        <button type="button" onClick={() => search()} disabled={loading || !postalCode.trim()}
+          className="bg-[#00A1E0] text-white text-sm px-3 rounded hover:bg-[#0086b3] disabled:opacity-50">
+          {loading ? "…" : t.pickupPointSearchBtn}
+        </button>
+      </div>
+
+      {results !== null && results.length === 0 && (
+        <p className="text-xs text-gray-400 mt-2">{t.pickupPointNoResults}</p>
+      )}
+
+      {results && results.length > 0 && (
+        <div className="mt-2 space-y-1.5">
+          {results.map((p) => (
+            <div key={p.id} className="border rounded-lg px-3 py-2 bg-white flex items-start gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd"/>
+              </svg>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <p className="text-xs font-medium text-gray-800">{p.name}</p>
+                  {p.distance_km != null && <span className="text-[10px] text-gray-400">{t.pickupPointDistance(p.distance_km)}</span>}
+                </div>
+                <p className="text-[10px] text-gray-500">{p.address}, {p.postal_code} {p.city}</p>
+                {fmtHours(p.hours) && <p className="text-[10px] text-gray-400 mt-0.5">{fmtHours(p.hours)}</p>}
+              </div>
+              <button type="button" onClick={() => onSelect(p)}
+                className="shrink-0 text-xs font-medium px-2 py-1 rounded bg-purple-600 text-white hover:bg-purple-700">
+                {t.pickupPointSelect}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── PDP — Product Detail Page ─────────────────────────────────────────────────
 
-function PDPView({ product, categories, catalog, onAddToCart, onBack, onGoToCart, cart, hasLg, storeName, onChangeStore, inventory, inventoryLoading, onRefreshInventory, storeId, storeExtRef, lgId, lgExtRef, deSetupName, deCarrierName, deCarrierMethods, deDefaultCountry, deDefaultPostalCode }) {
+function PDPView({ product, categories, catalog, onAddToCart, onBack, onGoToCart, cart, hasLg, storeName, onChangeStore, inventory, inventoryLoading, onRefreshInventory, storeId, storeExtRef, lgId, lgExtRef, deSetupName, deCarrierName, deCarrierMethods, deDefaultCountry, deDefaultPostalCode, pickupPointDmId }) {
   const { t } = useLang();
   const [qty, setQty] = useState(1);
   const [pickupChecked, setPickupChecked] = useState(false);
   const [resolvedPickupTime, setResolvedPickupTime] = useState(null);
   const [resolvedPickupStore, setResolvedPickupStore] = useState(null); // geo mode: {storeExtRef, storeName, pickupTime}
+  const [selectedPickupPoint, setSelectedPickupPoint] = useState(null); // { id, name, address, city, postal_code, carrier, coordinates }
   // Home delivery — selected shipping method + TMS booking (when applicable)
   const [selectedShippingMethod, setSelectedShippingMethod] = useState(null); // ref string
   const [selectedShippingMethodName, setSelectedShippingMethodName] = useState(null);
@@ -1218,6 +1323,17 @@ function PDPView({ product, categories, catalog, onAddToCart, onBack, onGoToCart
                     onSelectMethod={handleSelectShippingMethod}
                     selectedMethodRef={selectedShippingMethod}
                   />
+
+                  {pickupPointDmId && (
+                    <PickupPointSelector
+                      defaultCountry={deDefaultCountry || "FR"}
+                      selectedPoint={selectedPickupPoint}
+                      onSelect={(p) => {
+                        setSelectedPickupPoint(p);
+                        if (p) { setPickupChecked(false); setSelectedShippingMethod(null); }
+                      }}
+                    />
+                  )}
                 </>
               ) : (
                 <p className="text-xs text-gray-400 mt-2">{t.ecomOutOfStock}</p>
@@ -1249,37 +1365,42 @@ function PDPView({ product, categories, catalog, onAddToCart, onBack, onGoToCart
 
             <button
               onClick={() => {
-                if (pickupChecked) {
+                if (selectedPickupPoint) {
+                  onAddToCart(product, qty, null, null, selectedPickupPoint);
+                } else if (pickupChecked) {
                   const pickupOpts = storeExtRef
                     ? { isBopis: true, storeId, storeExtRef, storeName, pickupTime: resolvedPickupTime }
                     : resolvedPickupStore
                       ? { isBopis: true, storeId: "", storeExtRef: resolvedPickupStore.storeExtRef, storeName: resolvedPickupStore.storeName, pickupTime: resolvedPickupStore.pickupTime, isTransfer: resolvedPickupStore.isTransfer || false }
                       : null;
-                  onAddToCart(product, qty, pickupOpts, null);
+                  onAddToCart(product, qty, pickupOpts, null, null);
                 } else {
                   const homeOpts = selectedShippingMethod
                     ? { shippingMethod: selectedShippingMethod, shippingMethodName: selectedShippingMethodName, tmsBooking: selectedTmsBooking, estimatedDeliveryMax: selectedDeMax, allDeMax: selectedAllDeMax }
                     : null;
-                  onAddToCart(product, qty, null, homeOpts);
+                  onAddToCart(product, qty, null, homeOpts, null);
                 }
               }}
               disabled={(() => {
                 const inv = inventory === null ? null : (inventory?.[product.sku] ?? null);
                 if (inv === null) return true;
                 if (inv.aft === 0 && inv.ato === 0) return true;
+                if (selectedPickupPoint) return false;
+                if (pickupChecked) return false;
                 const hasDeliveryMethods = Array.isArray(deCarrierMethods) && deCarrierMethods.length > 0;
-                if (!pickupChecked && hasDeliveryMethods && !selectedShippingMethod) return true;
-                if (!pickupChecked && product.require_tms_booking && !selectedTmsBooking) return true;
+                if (hasDeliveryMethods && !selectedShippingMethod && !pickupPointDmId) return true;
+                if (hasDeliveryMethods && !selectedShippingMethod && pickupPointDmId && !selectedPickupPoint) return true;
+                if (product.require_tms_booking && !selectedTmsBooking) return true;
                 return false;
               })()}
               className="w-full bg-[#00A1E0] text-white py-2.5 rounded font-medium hover:bg-[#0086b3] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {pickupChecked ? t.ecomAddToCartPickup : t.ecomAddToCart}
+              {selectedPickupPoint ? t.pickupPointDelivery : pickupChecked ? t.ecomAddToCartPickup : t.ecomAddToCart}
             </button>
-            {!pickupChecked && Array.isArray(deCarrierMethods) && deCarrierMethods.length > 0 && !selectedShippingMethod && (
+            {!pickupChecked && !selectedPickupPoint && Array.isArray(deCarrierMethods) && deCarrierMethods.length > 0 && !selectedShippingMethod && (
               <p className="text-xs text-orange-600 text-center">Select a delivery method above</p>
             )}
-            {!pickupChecked && product.require_tms_booking && selectedShippingMethod && !selectedTmsBooking && (
+            {!pickupChecked && !selectedPickupPoint && product.require_tms_booking && selectedShippingMethod && !selectedTmsBooking && (
               <p className="text-xs text-orange-600 text-center">Select a delivery method with an available slot above</p>
             )}
             {inventory === null && !inventoryLoading && (
@@ -1516,13 +1637,20 @@ function CartView({ cart, onUpdateQty, onRemove, onCheckout, onContinueShopping,
             // Build ordered groups: ship first, then one group per store (by storeExtRef)
             const groups = new Map();
             cart.forEach((item, i) => {
-              const key = item.isBopis ? `pickup:${item.pickupStore?.storeExtRef || ""}:${item.pickupStore?.isTransfer ? "transfer" : "pickup"}` : "ship";
+              const isPickupPoint = !!(item.isPickupPoint || item.pickupPoint?.id);
+              const key = isPickupPoint
+                ? `ppoint:${item.pickupPoint?.id || ""}`
+                : item.isBopis
+                  ? `pickup:${item.pickupStore?.storeExtRef || ""}:${item.pickupStore?.isTransfer ? "transfer" : "pickup"}`
+                  : "ship";
               if (!groups.has(key)) {
                 if (key === "ship") {
-                  groups.set(key, { label: t.ecomGroupShip, isPickup: false, isTransfer: false, storeExtRef: null, items: [] });
+                  groups.set(key, { label: t.ecomGroupShip, isPickup: false, isPickupPoint: false, isTransfer: false, storeExtRef: null, items: [] });
+                } else if (isPickupPoint) {
+                  groups.set(key, { label: `📍 ${item.pickupPoint?.name || t.pickupPointTitle}`, isPickup: false, isPickupPoint: true, isTransfer: false, pickupPoint: item.pickupPoint, items: [] });
                 } else {
                   const isTransfer = item.pickupStore?.isTransfer || false;
-                  groups.set(key, { label: t.ecomGroupPickup(item.pickupStore?.storeName || ""), isPickup: true, isTransfer, storeExtRef: item.pickupStore?.storeExtRef || "", items: [] });
+                  groups.set(key, { label: t.ecomGroupPickup(item.pickupStore?.storeName || ""), isPickup: true, isPickupPoint: false, isTransfer, storeExtRef: item.pickupStore?.storeExtRef || "", items: [] });
                 }
               }
               groups.get(key).items.push({ item, globalIndex: i });
@@ -1571,9 +1699,13 @@ function CartView({ cart, onUpdateQty, onRemove, onCheckout, onContinueShopping,
               return (
                 <div key={key} className="border rounded-lg overflow-hidden">
                   {/* Group header */}
-                  <div className={`px-3 py-2 border-b ${group.isPickup ? "bg-green-50 border-green-100" : "bg-blue-50 border-blue-100"}`}>
-                    <div className={`flex items-center gap-2 text-xs font-semibold ${group.isPickup ? "text-green-800" : "text-blue-700"}`}>
+                  <div className={`px-3 py-2 border-b ${group.isPickup ? "bg-green-50 border-green-100" : group.isPickupPoint ? "bg-purple-50 border-purple-100" : "bg-blue-50 border-blue-100"}`}>
+                    <div className={`flex items-center gap-2 text-xs font-semibold ${group.isPickup ? "text-green-800" : group.isPickupPoint ? "text-purple-800" : "text-blue-700"}`}>
                       {group.isPickup ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd"/>
+                        </svg>
+                      ) : group.isPickupPoint ? (
                         <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 shrink-0" viewBox="0 0 20 20" fill="currentColor">
                           <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd"/>
                         </svg>
@@ -1584,10 +1716,13 @@ function CartView({ cart, onUpdateQty, onRemove, onCheckout, onContinueShopping,
                         </svg>
                       )}
                       <span className="flex-1">{group.label}</span>
-                      {!group.isPickup && shipMethodName && (
+                      {group.isPickupPoint && group.pickupPoint && (
+                        <span className="text-[10px] font-normal bg-purple-100 text-purple-700 rounded px-1.5 py-0.5">{group.pickupPoint.address}, {group.pickupPoint.postal_code} {group.pickupPoint.city}</span>
+                      )}
+                      {!group.isPickup && !group.isPickupPoint && shipMethodName && (
                         <span className="text-[10px] font-normal bg-blue-100 text-blue-700 rounded px-1.5 py-0.5">{shipMethodName}</span>
                       )}
-                      {!group.isPickup && Array.isArray(deCarrierMethods) && deCarrierMethods.length > 1 && (
+                      {!group.isPickup && !group.isPickupPoint && Array.isArray(deCarrierMethods) && deCarrierMethods.length > 1 && (
                         <button
                           type="button"
                           onClick={() => setMethodPickerInfo({
@@ -1813,12 +1948,24 @@ function buildCheckoutRestore(cart, catalog, lgId, lgExtRef, locations = []) {
   const groupKeys = [];
   const groupMeta = {};
   for (const item of cart) {
-    const key = item.isBopis ? `pickup:${item.pickupStore?.storeExtRef || ""}:${item.pickupStore?.isTransfer ? "transfer" : "pickup"}` : "ship";
+    const isPickupPoint = !!(item.isPickupPoint || item.pickupPoint?.id);
+    const key = isPickupPoint
+      ? `ppoint:${item.pickupPoint?.id || ""}`
+      : item.isBopis
+        ? `pickup:${item.pickupStore?.storeExtRef || ""}:${item.pickupStore?.isTransfer ? "transfer" : "pickup"}`
+        : "ship";
     if (!groupKeys.includes(key)) {
       groupKeys.push(key);
-      if (item.isBopis) {
+      if (isPickupPoint) {
+        groupMeta[key] = {
+          isPickup: false,
+          isPickupPoint: true,
+          pickupPoint: item.pickupPoint,
+        };
+      } else if (item.isBopis) {
         groupMeta[key] = {
           isPickup: true,
+          isPickupPoint: false,
           isTransfer: item.pickupStore?.isTransfer || false,
           storeId: item.pickupStore?.storeId || "",
           storeExtRef: item.pickupStore?.storeExtRef || "",
@@ -1826,9 +1973,9 @@ function buildCheckoutRestore(cart, catalog, lgId, lgExtRef, locations = []) {
           pickupTime: item.pickupStore?.pickupTime || null,
         };
       } else {
-        // Capture home delivery selection (shipping method + TMS booking) from first ship item
         groupMeta[key] = {
           isPickup: false,
+          isPickupPoint: false,
           shippingMethod: item.homeDelivery?.shippingMethod || null,
           shippingMethodName: item.homeDelivery?.shippingMethodName || null,
           tmsBooking: item.homeDelivery?.tmsBooking || null,
@@ -1862,7 +2009,19 @@ function buildCheckoutRestore(cart, catalog, lgId, lgExtRef, locations = []) {
   const deliveryGroups = groupKeys.map((key) => {
     const meta = groupMeta[key];
     const dg = emptyDg();
-    if (meta.isPickup) {
+    if (meta.isPickupPoint) {
+      const pp = meta.pickupPoint || {};
+      dg.order_delivery_method_id = c.pickup_point_delivery_method_id || "";
+      dg.shipping_name = pp.name || "";
+      dg.shipping_street = pp.address || "";
+      dg.shipping_city = pp.city || "";
+      dg.shipping_postal_code = pp.postal_code || "";
+      dg.shipping_country_code = pp.country || "";
+      dg.shipping_unit_price = c.pickup_point_shipping_unit_price ?? 0;
+      dg.shipping_tax_rate = c.pickup_point_shipping_tax_rate ?? 20;
+      dg.pickup_point_id = pp.id || "";
+      dg.pickup_point_carrier = pp.carrier || "";
+    } else if (meta.isPickup) {
       dg.order_delivery_method_id = meta.isTransfer
         ? (c.transfer_delivery_method_id || "")
         : (c.pickup_delivery_method_id || "");
@@ -1914,7 +2073,12 @@ function buildCheckoutRestore(cart, catalog, lgId, lgExtRef, locations = []) {
   const round2 = (v) => Math.round(v * 100) / 100;
 
   const products = cart.map((item) => {
-    const key = item.isBopis ? `pickup:${item.pickupStore?.storeExtRef || ""}:${item.pickupStore?.isTransfer ? "transfer" : "pickup"}` : "ship";
+    const isPickupPoint = !!(item.isPickupPoint || item.pickupPoint?.id);
+    const key = isPickupPoint
+      ? `ppoint:${item.pickupPoint?.id || ""}`
+      : item.isBopis
+        ? `pickup:${item.pickupStore?.storeExtRef || ""}:${item.pickupStore?.isTransfer ? "transfer" : "pickup"}`
+        : "ship";
     const dgIndex = groupKeys.indexOf(key);
     const price = item.product.unit_price;
     const tax = round2(price * taxRate / 100);
@@ -1956,6 +2120,7 @@ function buildCheckoutRestore(cart, catalog, lgId, lgExtRef, locations = []) {
       webstore_id: c.webstore_id || "",
       sales_channel_id: c.sales_channel_id || "",
       payment_gateway_id: c.payment_gateway_id || "",
+      gift_card_payment_gateway_id: c.gift_card_payment_gateway_id || "",
       first_name: "",
       last_name: "",
       billing_email: "",
@@ -2023,7 +2188,7 @@ function ResultView({ result, onReset }) {
 
 // ── Main EcomForm ─────────────────────────────────────────────────────────────
 
-export default function EcomForm() {
+export default function EcomForm({ onFormChange, pendingRestore, onRestoreDone }) {
   const { t } = useLang();
   const [view, setView] = useState(() => sessionStorage.getItem(SESSION_VIEW) || "catalog-select");
 
@@ -2059,6 +2224,8 @@ export default function EcomForm() {
   });
   const [checkoutResult, setCheckoutResult] = useState(null);
   const [checkoutRestore, setCheckoutRestore] = useState(null);
+  const [checkoutForm, setCheckoutForm] = useState(null); // captured from CreateOrderForm for use case save
+  const [checkoutAccount, setCheckoutAccount] = useState(null);
 
   // Inventory — fetched at this level, shared between PLP and PDP
   const [inventory, setInventory] = useState(null);
@@ -2090,6 +2257,24 @@ export default function EcomForm() {
     setView(v);
     sessionStorage.setItem(SESSION_VIEW, v);
   };
+
+  // Notify UseCasePanel of current state so it can save/restore
+  useEffect(() => {
+    if (!onFormChange) return;
+    const form = catalog ? {
+      _ecom: true,
+      catalog_id: catalog.id,
+      cart,
+      lg_id: lgId,
+      lg_name: lgName,
+      lg_ext_ref: lgExtRef,
+      store_id: storeId,
+      store_name: storeName,
+      store_ext_ref: storeExtRef,
+      checkout_form: checkoutForm || null,
+    } : null;
+    onFormChange(form, [], checkoutAccount);
+  }, [catalog, cart, lgId, storeId, checkoutForm, checkoutAccount]);
 
   const saveCart = (updater) => {
     setCart((prev) => {
@@ -2184,6 +2369,7 @@ export default function EcomForm() {
           webstore_id: fresh.webstore_id || "",
           sales_channel_id: fresh.sales_channel_id || "",
           payment_gateway_id: fresh.payment_gateway_id || "",
+          gift_card_payment_gateway_id: fresh.gift_card_payment_gateway_id || "",
           pickup_delivery_method_id: fresh.pickup_delivery_method_id || "",
           pickup_shipping_unit_price: fresh.pickup_shipping_unit_price ?? 0,
           pickup_shipping_tax_rate: fresh.pickup_shipping_tax_rate ?? 5,
@@ -2241,6 +2427,7 @@ export default function EcomForm() {
       webstore_id: cat.webstore_id || "",
       sales_channel_id: cat.sales_channel_id || "",
       payment_gateway_id: cat.payment_gateway_id || "",
+      gift_card_payment_gateway_id: cat.gift_card_payment_gateway_id || "",
       pickup_delivery_method_id: cat.pickup_delivery_method_id || "",
       pickup_shipping_unit_price: cat.pickup_shipping_unit_price ?? 0,
       pickup_shipping_tax_rate: cat.pickup_shipping_tax_rate ?? 5,
@@ -2262,6 +2449,54 @@ export default function EcomForm() {
     await resolveAndApplyLg(cat.location_group_id || "", cat.location_group_name || "", cat.location_group_ext_ref || "");
     navTo("plp");
   };
+
+  // Restore from UseCasePanel — placed after selectCatalog so the closure is correct
+  useEffect(() => {
+    if (!pendingRestore?.form?._ecom) return;
+    const { catalog_id, cart: savedCart, lg_id, lg_name, lg_ext_ref, store_id, store_name, store_ext_ref, checkout_form } = pendingRestore.form;
+    const savedAccount = pendingRestore.account || null;
+    onRestoreDone?.();
+    if (!catalog_id) return;
+    api.get(`/catalogs/${catalog_id}`).then((r) => {
+      selectCatalog(r.data).then(() => {
+        // Restore LG + store if present
+        if (lg_id) {
+          setLgId(lg_id); setLgName(lg_name || ""); setLgExtRef(lg_ext_ref || "");
+          sessionStorage.setItem(SESSION_LG_ID, lg_id);
+          sessionStorage.setItem(SESSION_LG_NAME, lg_name || "");
+          sessionStorage.setItem(SESSION_LG_EXT_REF, lg_ext_ref || "");
+        }
+        if (store_id || store_ext_ref) {
+          setStoreId(store_id || ""); setStoreName(store_name || ""); setStoreExtRef(store_ext_ref || "");
+          sessionStorage.setItem(SESSION_STORE_ID, store_id || "");
+          sessionStorage.setItem(SESSION_STORE_NAME, store_name || "");
+          sessionStorage.setItem(SESSION_STORE_EXT_REF, store_ext_ref || "");
+        }
+        if (Array.isArray(savedCart) && savedCart.length) {
+          saveCart(savedCart);
+          // If checkout_form exists, go straight to checkout with pre-filled form
+          if (checkout_form) {
+            setCheckoutForm(checkout_form);
+            api.get("/oci/locations").then((loc) => {
+              const restore = buildCheckoutRestore(savedCart, r.data, lg_id || "", lg_ext_ref || "", loc.data || []);
+              // Merge delivery groups from cart rebuild, keep all customer/payment fields from checkout_form
+              const mergedForm = {
+                ...checkout_form,
+                _deliveryGroups: restore._deliveryGroups || checkout_form._deliveryGroups,
+              };
+              setCheckoutRestore({ form: mergedForm, products: restore.products || [], account: savedAccount });
+              navTo("checkout");
+            }).catch(() => {
+              setCheckoutRestore({ form: checkout_form, products: [], account: savedAccount });
+              navTo("checkout");
+            });
+          } else {
+            navTo("cart");
+          }
+        }
+      });
+    }).catch(() => {});
+  }, [pendingRestore]);
 
   const deselectCatalog = () => {
     setCatalog(null);
@@ -2302,24 +2537,27 @@ export default function EcomForm() {
   const genRequestId = () => `${Math.random().toString(20).slice(2)}-${Date.now().toString(36)}`;
 
   // homeOpts = { shippingMethod, shippingMethodName, tmsBooking } — home delivery selection
-  const addToCart = (product, qty = 1, pickupOpts = null, homeOpts = null) => {
+  const addToCart = (product, qty = 1, pickupOpts = null, homeOpts = null, pickupPointOpts = null) => {
     // Update cart immediately
     const isBopis = !!(pickupOpts?.isBopis && pickupOpts.storeExtRef);
+    const isPickupPoint = !!pickupPointOpts?.id;
     const pickupStore = isBopis ? { storeId: pickupOpts.storeId || "", storeExtRef: pickupOpts.storeExtRef, storeName: pickupOpts.storeName || "", pickupTime: pickupOpts.pickupTime || null, isTransfer: pickupOpts.isTransfer || false } : null;
-    const homeDelivery = (!isBopis && homeOpts) ? { shippingMethod: homeOpts.shippingMethod || null, shippingMethodName: homeOpts.shippingMethodName || null, tmsBooking: homeOpts.tmsBooking || null, estimatedDeliveryMax: homeOpts.estimatedDeliveryMax || null, allDeMax: homeOpts.allDeMax || {} } : null;
+    const homeDelivery = (!isBopis && !isPickupPoint && homeOpts) ? { shippingMethod: homeOpts.shippingMethod || null, shippingMethodName: homeOpts.shippingMethodName || null, tmsBooking: homeOpts.tmsBooking || null, estimatedDeliveryMax: homeOpts.estimatedDeliveryMax || null, allDeMax: homeOpts.allDeMax || {} } : null;
+    const pickupPoint = isPickupPoint ? pickupPointOpts : null;
     saveCart((prev) => {
-      // Match on product + delivery mode: same product in BOPIS and home delivery = two separate lines
       const idx = prev.findIndex((item) =>
         item.product.id === product.id &&
         item.isBopis === isBopis &&
-        (item.pickupStore?.storeExtRef || "") === (pickupStore?.storeExtRef || "")
+        item.isPickupPoint === isPickupPoint &&
+        (item.pickupStore?.storeExtRef || "") === (pickupStore?.storeExtRef || "") &&
+        (item.pickupPoint?.id || "") === (pickupPoint?.id || "")
       );
       if (idx >= 0) {
         const updated = [...prev];
         updated[idx] = { ...updated[idx], quantity: updated[idx].quantity + qty };
         return updated;
       }
-      return [...prev, { product, quantity: qty, isBopis, pickupStore, homeDelivery }];
+      return [...prev, { product, quantity: qty, isBopis, isPickupPoint, pickupStore, homeDelivery, pickupPoint }];
     });
 
     // Soft reservation — sync (actionRequestId needed for order), then optimistic cache update
@@ -2390,6 +2628,7 @@ export default function EcomForm() {
     saveCart([]);
     setCheckoutResult(null);
     setCheckoutRestore(null);
+    setCheckoutAccount(null);
     saveCategory(null);
     saveReservations({});
     navTo("plp");
@@ -2434,7 +2673,7 @@ export default function EcomForm() {
           {...storeProps}
           product={selectedProduct}
           categories={categories}
-          onAddToCart={(p, qty, pickupOpts, homeOpts) => { addToCart(p, qty, pickupOpts, homeOpts); }}
+          onAddToCart={(p, qty, pickupOpts, homeOpts, pickupPointOpts) => { addToCart(p, qty, pickupOpts, homeOpts, pickupPointOpts); }}
           onBack={() => navTo("plp")}
           onGoToCart={() => navTo("cart")}
           cart={cart}
@@ -2450,6 +2689,7 @@ export default function EcomForm() {
           deCarrierMethods={Array.isArray(catalog?.de_carrier_methods) ? catalog.de_carrier_methods : []}
           deDefaultCountry={catalog?.de_default_country || ""}
           deDefaultPostalCode={catalog?.de_default_postal_code || ""}
+          pickupPointDmId={catalog?.pickup_point_delivery_method_id || ""}
         />
       )}
 
@@ -2519,6 +2759,7 @@ export default function EcomForm() {
             pendingRestore={checkoutRestore}
             onRestoreDone={() => setCheckoutRestore(null)}
             activeCatalogId={catalog?.id || null}
+            onFormChange={(form, products, account) => { setCheckoutForm(form); setCheckoutAccount(account); }}
             onOrderCreated={(data) => {
               const result = data?.result || data;
               setCheckoutResult(result);

@@ -189,7 +189,11 @@ export default function App() {
               />
             )}
             {activeTab === "ecom" && (
-              <EcomForm />
+              <EcomForm
+                onFormChange={handleFormChange}
+                pendingRestore={pendingRestore}
+                onRestoreDone={() => setPendingRestore(null)}
+              />
             )}
           </div>
         )}

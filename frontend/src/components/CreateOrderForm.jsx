@@ -84,6 +84,7 @@ export default function CreateOrderForm({ onOrderCreated, onFormChange, pendingR
 
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadErrors, setLoadErrors] = useState([]);
   const [error, setError] = useState(null);
   const [locationFilters, setLocationFilters] = useState([]);
   const [dgLocationFilters, setDgLocationFilters] = useState([""]);
@@ -116,6 +117,7 @@ export default function CreateOrderForm({ onOrderCreated, onFormChange, pendingR
 
     // payment
     payment_gateway_id: "",
+    gift_card_payment_gateway_id: "",
     gateway_token: "undefined",
     card_type: "Visa",
     card_holder_name: "",
@@ -164,24 +166,31 @@ export default function CreateOrderForm({ onOrderCreated, onFormChange, pendingR
   useEffect(() => {
     const init = async () => {
       setLoading(true);
+      setLoadErrors([]);
+      const safe = (label, promise) =>
+        promise.catch((err) => {
+          const status = err?.response?.status;
+          const msg = err?.response?.data?.detail || err?.message || "error";
+          setLoadErrors((prev) => [...prev, `${label}: ${status ? `${status} ` : ""}${JSON.stringify(msg)}`]);
+        });
       await Promise.all([
-        fetchNextRef(),
-        fetchCatalogs(),
-        cachedGet("/orders/delivery-methods").then(setDeliveryMethods),
-        cachedGet("/orders/webstores").then(setWebstores),
-        cachedGet("/orders/saleschannels").then(setSalesChannels),
-        cachedGet("/orders/payment-gateways").then(setPaymentGateways),
-        cachedGet("/orders/locations").then(setLocations),
-        cachedGet("/orders/location-groups").then(setLocationGroups),
-        cachedGet("/orders/shipping-products").then(setShippingProducts),
-        cachedGet("/orders/promotions").then(setPromotions),
-        cachedGet("/orders/currencies").then((data) => {
+        safe("next-reference", fetchNextRef()),
+        safe("catalogs", fetchCatalogs()),
+        safe("delivery-methods", cachedGet("/orders/delivery-methods").then(setDeliveryMethods)),
+        safe("webstores", cachedGet("/orders/webstores").then(setWebstores)),
+        safe("sales-channels", cachedGet("/orders/saleschannels").then(setSalesChannels)),
+        safe("payment-gateways", cachedGet("/orders/payment-gateways").then(setPaymentGateways)),
+        safe("locations", cachedGet("/orders/locations").then(setLocations)),
+        safe("location-groups", cachedGet("/orders/location-groups").then(setLocationGroups)),
+        safe("shipping-products", cachedGet("/orders/shipping-products").then(setShippingProducts)),
+        safe("promotions", cachedGet("/orders/promotions").then(setPromotions)),
+        safe("currencies", cachedGet("/orders/currencies").then((data) => {
           setCurrencies(data);
           if (data.length > 0) {
             const corporate = data.find((c) => c.IsCorporate) || data[0];
             setForm((prev) => ({ ...prev, currency_iso_code: corporate.IsoCode }));
           }
-        }),
+        })),
       ]);
       setLoading(false);
     };
@@ -284,6 +293,8 @@ export default function CreateOrderForm({ onOrderCreated, onFormChange, pendingR
           shipping_tax_amount: calc.tax,
           shipping_tax_rate: Number(dg.shipping_tax_rate),
           ...(dg.pickup_time ? { pickup_time: dg.pickup_time } : {}),
+          ...(dg.pickup_point_id ? { pickup_point_id: dg.pickup_point_id } : {}),
+          ...(dg.pickup_point_carrier ? { pickup_point_carrier: dg.pickup_point_carrier } : {}),
         };
       }),
       first_name: form.first_name,
@@ -316,6 +327,7 @@ export default function CreateOrderForm({ onOrderCreated, onFormChange, pendingR
           gift_card_number: giftCard.gift_card_number,
           gift_card_pin: giftCard.gift_card_pin,
           amount: gcAmount,
+          payment_gateway_id: form.gift_card_payment_gateway_id || "",
         },
       } : {}),
       promotion: form.promotion_name
@@ -659,6 +671,8 @@ export default function CreateOrderForm({ onOrderCreated, onFormChange, pendingR
             shipping_tax_amount: calc.tax,
             shipping_tax_rate: Number(dg.shipping_tax_rate),
             ...(dg.pickup_time ? { pickup_time: dg.pickup_time } : {}),
+            ...(dg.pickup_point_id ? { pickup_point_id: dg.pickup_point_id } : {}),
+            ...(dg.pickup_point_carrier ? { pickup_point_carrier: dg.pickup_point_carrier } : {}),
           };
         }),
 
@@ -694,6 +708,7 @@ export default function CreateOrderForm({ onOrderCreated, onFormChange, pendingR
             gift_card_number: giftCard.gift_card_number,
             gift_card_pin: giftCard.gift_card_pin,
             amount: gcAmount,
+            payment_gateway_id: form.gift_card_payment_gateway_id || "",
           },
         } : {}),
 
@@ -799,6 +814,13 @@ export default function CreateOrderForm({ onOrderCreated, onFormChange, pendingR
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       {/*<h2 className="text-lg font-semibold text-gray-800">{t.createOrderTitle}</h2>*/}
+
+      {loadErrors.length > 0 && (
+        <div className="bg-yellow-50 border border-yellow-300 text-yellow-800 rounded px-4 py-2 text-xs space-y-1">
+          <p className="font-semibold">Some lookups failed (check permissions):</p>
+          {loadErrors.map((e, i) => <p key={i} className="font-mono">{e}</p>)}
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 rounded px-4 py-2 text-sm whitespace-pre-wrap">
@@ -1251,6 +1273,27 @@ export default function CreateOrderForm({ onOrderCreated, onFormChange, pendingR
         </div>
         {useGiftCard && (
           <div className="grid grid-cols-2 gap-3 mt-2">
+            {/* Gateway — hidden if catalog default set, dropdown otherwise */}
+            {form.gift_card_payment_gateway_id ? (
+              <div className="col-span-2">
+                <label className={labelCls}>Gift Card Payment Gateway</label>
+                <div className="flex items-center gap-2 px-2 py-1.5 border rounded bg-gray-50 text-sm text-gray-600">
+                  <span className="flex-1 truncate">{paymentGateways.find((pg) => pg.Id === form.gift_card_payment_gateway_id)?.PaymentGatewayName || form.gift_card_payment_gateway_id}</span>
+                  <span className="text-[10px] text-gray-400">from catalog</span>
+                </div>
+              </div>
+            ) : (
+              <div className="col-span-2">
+                <label className={labelCls}>Gift Card Payment Gateway *</label>
+                <select className={inputCls} value={form.gift_card_payment_gateway_id}
+                  onChange={(e) => setForm((prev) => ({ ...prev, gift_card_payment_gateway_id: e.target.value }))}>
+                  <option value="">— select —</option>
+                  {paymentGateways.map((pg) => (
+                    <option key={pg.Id} value={pg.Id}>{pg.PaymentGatewayName || pg.Id}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="col-span-2">
               <label className={labelCls}>{t.giftCardNumber}</label>
               <input className={inputCls} value={giftCard.gift_card_number}

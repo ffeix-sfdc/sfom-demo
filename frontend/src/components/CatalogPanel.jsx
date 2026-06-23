@@ -126,9 +126,13 @@ export default function CatalogPanel({ activeCatalogId, onSelectCatalog }) {
   const [catalogWebstoreId, setCatalogWebstoreId] = useState("");
   const [catalogSalesChannelId, setCatalogSalesChannelId] = useState("");
   const [catalogPaymentGatewayId, setCatalogPaymentGatewayId] = useState("");
+  const [catalogGiftCardGatewayId, setCatalogGiftCardGatewayId] = useState("");
   const [catalogPickupDmId, setCatalogPickupDmId] = useState("");
   const [catalogPickupPrice, setCatalogPickupPrice] = useState("0");
   const [catalogPickupTaxRate, setCatalogPickupTaxRate] = useState("5");
+  const [catalogPickupPointDmId, setCatalogPickupPointDmId] = useState("");
+  const [catalogPickupPointPrice, setCatalogPickupPointPrice] = useState("0");
+  const [catalogPickupPointTaxRate, setCatalogPickupPointTaxRate] = useState("20");
   const [catalogTransferDmId, setCatalogTransferDmId] = useState("");
   const [catalogTransferPrice, setCatalogTransferPrice] = useState("0");
   const [catalogTransferTaxRate, setCatalogTransferTaxRate] = useState("5");
@@ -247,9 +251,13 @@ export default function CatalogPanel({ activeCatalogId, onSelectCatalog }) {
     setCatalogWebstoreId(cat.webstore_id || "");
     setCatalogSalesChannelId(cat.sales_channel_id || "");
     setCatalogPaymentGatewayId(cat.payment_gateway_id || "");
+    setCatalogGiftCardGatewayId(cat.gift_card_payment_gateway_id || "");
     setCatalogPickupDmId(cat.pickup_delivery_method_id || "");
     setCatalogPickupPrice(String(cat.pickup_shipping_unit_price ?? 0));
     setCatalogPickupTaxRate(String(cat.pickup_shipping_tax_rate ?? 5));
+    setCatalogPickupPointDmId(cat.pickup_point_delivery_method_id || "");
+    setCatalogPickupPointPrice(String(cat.pickup_point_shipping_unit_price ?? 0));
+    setCatalogPickupPointTaxRate(String(cat.pickup_point_shipping_tax_rate ?? 20));
     setCatalogTransferDmId(cat.transfer_delivery_method_id || "");
     setCatalogTransferPrice(String(cat.transfer_shipping_unit_price ?? 0));
     setCatalogTransferTaxRate(String(cat.transfer_shipping_tax_rate ?? 5));
@@ -283,9 +291,13 @@ export default function CatalogPanel({ activeCatalogId, onSelectCatalog }) {
       webstore_id: catalogWebstoreId,
       sales_channel_id: catalogSalesChannelId,
       payment_gateway_id: catalogPaymentGatewayId,
+      gift_card_payment_gateway_id: catalogGiftCardGatewayId,
       pickup_delivery_method_id: catalogPickupDmId,
       pickup_shipping_unit_price: parseFloat(catalogPickupPrice) || 0,
       pickup_shipping_tax_rate: parseFloat(catalogPickupTaxRate) || 5,
+      pickup_point_delivery_method_id: catalogPickupPointDmId,
+      pickup_point_shipping_unit_price: parseFloat(catalogPickupPointPrice) || 0,
+      pickup_point_shipping_tax_rate: parseFloat(catalogPickupPointTaxRate) || 20,
       transfer_delivery_method_id: catalogTransferDmId,
       transfer_shipping_unit_price: parseFloat(catalogTransferPrice) || 0,
       transfer_shipping_tax_rate: parseFloat(catalogTransferTaxRate) || 5,
@@ -574,6 +586,13 @@ export default function CatalogPanel({ activeCatalogId, onSelectCatalog }) {
                   </select>
                 </div>
                 <div className="space-y-1">
+                  <p className="text-xs font-medium text-gray-500">Gift Card Payment Gateway <span className="text-gray-400 font-normal">(default for gift card)</span></p>
+                  <select className={inputCls} value={catalogGiftCardGatewayId} onChange={(e) => setCatalogGiftCardGatewayId(e.target.value)}>
+                    <option value="">— none (dropdown shown at checkout) —</option>
+                    {paymentGateways.map((pg) => <option key={pg.Id} value={pg.Id}>{pg.PaymentGatewayName || pg.Id}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1">
                   <p className="text-xs font-medium text-gray-500">Pickup Delivery Method</p>
                   <select className={inputCls} value={catalogPickupDmId} onChange={(e) => setCatalogPickupDmId(e.target.value)}>
                     <option value="">— none —</option>
@@ -582,6 +601,17 @@ export default function CatalogPanel({ activeCatalogId, onSelectCatalog }) {
                   <div className="flex gap-1">
                     <input type="number" step="0.01" min="0" className={inputCls} placeholder="Price" value={catalogPickupPrice} onChange={(e) => setCatalogPickupPrice(e.target.value)} />
                     <input type="number" step="0.01" min="0" className={inputCls} placeholder="Tax %" value={catalogPickupTaxRate} onChange={(e) => setCatalogPickupTaxRate(e.target.value)} />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-gray-500">Pickup Point Delivery Method</p>
+                  <select className={inputCls} value={catalogPickupPointDmId} onChange={(e) => setCatalogPickupPointDmId(e.target.value)}>
+                    <option value="">— none (option disabled on ecom) —</option>
+                    {deliveryMethods.map((dm) => <option key={dm.Id} value={dm.Id}>{dm.Name}</option>)}
+                  </select>
+                  <div className="flex gap-1">
+                    <input type="number" step="0.01" min="0" className={inputCls} placeholder="Price" value={catalogPickupPointPrice} onChange={(e) => setCatalogPickupPointPrice(e.target.value)} />
+                    <input type="number" step="0.01" min="0" className={inputCls} placeholder="Tax %" value={catalogPickupPointTaxRate} onChange={(e) => setCatalogPickupPointTaxRate(e.target.value)} />
                   </div>
                 </div>
                 <div className="space-y-1">
@@ -731,6 +761,13 @@ export default function CatalogPanel({ activeCatalogId, onSelectCatalog }) {
                             </select>
                           </div>
                           <div className="space-y-1">
+                            <p className="text-xs font-medium text-gray-500">Gift Card Payment Gateway <span className="text-gray-400 font-normal">(default for gift card)</span></p>
+                            <select className={inputCls} value={catalogGiftCardGatewayId} onChange={(e) => setCatalogGiftCardGatewayId(e.target.value)}>
+                              <option value="">— none (dropdown shown at checkout) —</option>
+                              {paymentGateways.map((pg) => <option key={pg.Id} value={pg.Id}>{pg.PaymentGatewayName || pg.Id}</option>)}
+                            </select>
+                          </div>
+                          <div className="space-y-1">
                             <p className="text-xs font-medium text-gray-500">Pickup Delivery Method</p>
                             <select className={inputCls} value={catalogPickupDmId} onChange={(e) => setCatalogPickupDmId(e.target.value)}>
                               <option value="">— none —</option>
@@ -739,6 +776,17 @@ export default function CatalogPanel({ activeCatalogId, onSelectCatalog }) {
                             <div className="flex gap-1">
                               <input type="number" step="0.01" min="0" className={inputCls} placeholder="Price" value={catalogPickupPrice} onChange={(e) => setCatalogPickupPrice(e.target.value)} />
                               <input type="number" step="0.01" min="0" className={inputCls} placeholder="Tax %" value={catalogPickupTaxRate} onChange={(e) => setCatalogPickupTaxRate(e.target.value)} />
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-xs font-medium text-gray-500">Pickup Point Delivery Method</p>
+                            <select className={inputCls} value={catalogPickupPointDmId} onChange={(e) => setCatalogPickupPointDmId(e.target.value)}>
+                              <option value="">— none (option disabled on ecom) —</option>
+                              {deliveryMethods.map((dm) => <option key={dm.Id} value={dm.Id}>{dm.Name}</option>)}
+                            </select>
+                            <div className="flex gap-1">
+                              <input type="number" step="0.01" min="0" className={inputCls} placeholder="Price" value={catalogPickupPointPrice} onChange={(e) => setCatalogPickupPointPrice(e.target.value)} />
+                              <input type="number" step="0.01" min="0" className={inputCls} placeholder="Tax %" value={catalogPickupPointTaxRate} onChange={(e) => setCatalogPickupPointTaxRate(e.target.value)} />
                             </div>
                           </div>
                           <div className="space-y-1">

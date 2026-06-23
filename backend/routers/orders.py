@@ -104,9 +104,7 @@ async def get_payment_gateways():
 async def get_locations():
     alias = get_active_alias()
     soql = (
-        "SELECT Id, Name, ExternalReference, LocationType, "
-        "VisitorAddressId, VisitorAddress.Street, VisitorAddress.City, "
-        "VisitorAddress.StateCode, VisitorAddress.PostalCode, VisitorAddress.CountryCode "
+        "SELECT Id, Name, ExternalReference, LocationType "
         "FROM Location WHERE IsInventoryLocation = true AND ShouldSyncWithOci = true AND IsDeleted = false ORDER BY Name"
     )
     result = await cached_sf_get(alias, "locations", sf_get, f"{SF_API}/query", params={"q": soql})
@@ -234,6 +232,9 @@ class DeliveryGroup(BaseModel):
     tms_booking_window_end: Optional[str] = None    # HH:MM
     tms_shipping_method_ref: Optional[str] = None
     tms_shipping_method_name: Optional[str] = None
+    # Pickup point (relay point delivery)
+    pickup_point_id: Optional[str] = None
+    pickup_point_carrier: Optional[str] = None
 
 
 class CardPayment(BaseModel):
@@ -253,6 +254,7 @@ class GiftCardPayment(BaseModel):
     gift_card_number: str
     gift_card_pin: str = ""
     amount: float
+    payment_gateway_id: Optional[str] = ""
 
 
 class PromotionInput(BaseModel):
@@ -447,11 +449,31 @@ def _build_order_payload(body: CreateOrderRequest, acc_result: dict, now_utc: st
                 **({"shippingMethodRef": dg.tms_shipping_method_ref} if dg.tms_shipping_method_ref else {}),
                 **({"shippingMethodName": dg.tms_shipping_method_name} if dg.tms_shipping_method_name else {}),
             })
+    pickup_points = []
+    for gi, dg in enumerate(body.delivery_groups):
+        if dg.pickup_point_id:
+            pickup_points.append({
+                "deliveryGroupIndex": gi,
+                "pickupPointId": dg.pickup_point_id,
+                **({"carrier": dg.pickup_point_carrier} if dg.pickup_point_carrier else {}),
+                **({"name": dg.shipping_name} if dg.shipping_name else {}),
+                **({"address": dg.shipping_street} if dg.shipping_street else {}),
+                **({"city": dg.shipping_city} if dg.shipping_city else {}),
+                **({"postalCode": dg.shipping_postal_code} if dg.shipping_postal_code else {}),
+                **({"country": dg.shipping_country_code} if dg.shipping_country_code else {}),
+            })
     meta_obj: dict = {}
     if pickup_slots:
         meta_obj["pickupSlots"] = pickup_slots
     if tms_bookings:
         meta_obj["tmsBookings"] = tms_bookings
+    if pickup_points:
+        meta_obj["pickupPoints"] = pickup_points
+    if body.gift_card_payment:
+        meta_obj["giftCard"] = {
+            "giftCardNumber": body.gift_card_payment.gift_card_number,
+            "amount": body.gift_card_payment.amount,
+        }
     order_metadata = json.dumps(meta_obj, ensure_ascii=False) if meta_obj else None
 
     os_attrs: dict = {
@@ -566,8 +588,7 @@ def _build_order_payload(body: CreateOrderRequest, acc_result: dict, now_utc: st
     })
 
     # Gift card payment (optional, partial)
-    # GiftCardPaymentMethod is not supported in Order Summary Graph API —
-    # AlternativePaymentMethod with Type=GiftCard is the correct sObject.
+    # DigitalWallet sObject + PaymentGatewayId on PaymentAuthorization
     if body.gift_card_payment:
         gc = body.gift_card_payment
         purchase_details.append({
@@ -579,31 +600,33 @@ def _build_order_payload(body: CreateOrderRequest, acc_result: dict, now_utc: st
                 "Type": "GiftCard",
             },
         })
-        gc_method_attrs: dict = {
-            "attributes": {"type": "AlternativePaymentMethod"},
-            "Type": "GiftCard",
-            "NickName": gc.gift_card_number,
-            "Status": "Active",
-            "ProcessingMode": "External",
-            "AccountId": "@{Account.id}",
-        }
         purchase_details.append({
             "referenceId": "GiftCardPaymentMethod_0",
-            "attributes": gc_method_attrs,
+            "attributes": {
+                "attributes": {"type": "DigitalWallet"},
+                "Type": "GiftCard",
+                "NickName": gc.gift_card_number,
+                "Status": "Active",
+                "ProcessingMode": "External",
+                "AccountId": "@{Account.id}",
+            },
         })
+        gc_auth_attrs: dict = {
+            "attributes": {"type": "PaymentAuthorization"},
+            "Amount": gc.amount,
+            "ProcessingMode": "External",
+            "Status": "Processed",
+            "GatewayRefNumber": body.order_reference,
+            "CurrencyIsoCode": body.currency_iso_code,
+            "OrderPaymentSummaryId": "@{OrderPaymentSummary_GC.id}",
+            "AccountId": "@{Account.id}",
+            "PaymentMethodId": "@{GiftCardPaymentMethod_0.id}",
+        }
+        if gc.payment_gateway_id:
+            gc_auth_attrs["PaymentGatewayId"] = gc.payment_gateway_id
         purchase_details.append({
             "referenceId": "PaymentAuthorization_GC",
-            "attributes": {
-                "attributes": {"type": "PaymentAuthorization"},
-                "Amount": gc.amount,
-                "ProcessingMode": "External",
-                "Status": "Processed",
-                "GatewayRefNumber": body.order_reference,
-                "CurrencyIsoCode": body.currency_iso_code,
-                "OrderPaymentSummaryId": "@{OrderPaymentSummary_GC.id}",
-                "AccountId": "@{Account.id}",
-                "PaymentMethodId": "@{GiftCardPaymentMethod_0.id}",
-            },
+            "attributes": gc_auth_attrs,
         })
 
     # Generic Delivery Charge product (shared across all groups)
@@ -622,22 +645,23 @@ def _build_order_payload(body: CreateOrderRequest, acc_result: dict, now_utc: st
     # OrderDeliveryGroupSummary — one per delivery group
     for gi, dg in enumerate(body.delivery_groups):
         odgs_ref = f"OrderDeliveryGroupSummary_{gi}"
+        odgs_attrs: dict = {
+            "attributes": {"type": "OrderDeliveryGroupSummary"},
+            "EmailAddress": dg.shipping_email,
+            "DeliverToCity": dg.shipping_city,
+            "DeliverToName": dg.shipping_name or f"{first_name} {last_name}".strip() or acc_result.get("Name", ""),
+            "DeliverToPostalCode": dg.shipping_postal_code,
+            "DeliverToStreet": dg.shipping_street,
+            "PhoneNumber": dg.shipping_phone,
+            "OrderDeliveryMethodId": dg.order_delivery_method_id,
+            "GrandTotalAmount": round(dg.shipping_gross_unit_price, 2),
+            "OrderSummaryId": "@{OrderSummary.id}",
+            "DeliverToCountryCode": dg.shipping_country_code or None,
+            "DeliverToStateCode": dg.shipping_state_code or None,
+        }
         purchase_details.append({
             "referenceId": odgs_ref,
-            "attributes": {
-                "attributes": {"type": "OrderDeliveryGroupSummary"},
-                "EmailAddress": dg.shipping_email,
-                "DeliverToCity": dg.shipping_city,
-                "DeliverToName": dg.shipping_name or f"{first_name} {last_name}".strip() or acc_result.get("Name", ""),
-                "DeliverToPostalCode": dg.shipping_postal_code,
-                "DeliverToStreet": dg.shipping_street,
-                "PhoneNumber": dg.shipping_phone,
-                "OrderDeliveryMethodId": dg.order_delivery_method_id,
-                "GrandTotalAmount": round(dg.shipping_gross_unit_price, 2),
-                "OrderSummaryId": "@{OrderSummary.id}",
-                "DeliverToCountryCode": dg.shipping_country_code or None,
-                "DeliverToStateCode": dg.shipping_state_code or None,
-            },
+            "attributes": odgs_attrs,
         })
 
     # OrderAdjustmentGroupSummary (only if promotion)

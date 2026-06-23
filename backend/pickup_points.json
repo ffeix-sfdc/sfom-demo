@@ -1,0 +1,162 @@
+[
+  {
+    "id": "PP-75001-001",
+    "carrier": "mondial-relay",
+    "name": "Tabac Presse du Louvre",
+    "address": "15 Rue du Louvre",
+    "city": "Paris",
+    "postal_code": "75001",
+    "country": "FR",
+    "coordinates": { "lat": 48.8637, "lng": 2.3448 },
+    "distance_km": 0.2,
+    "hours": {
+      "monday":    { "open": "07:00", "close": "20:00" },
+      "tuesday":   { "open": "07:00", "close": "20:00" },
+      "wednesday": { "open": "07:00", "close": "20:00" },
+      "thursday":  { "open": "07:00", "close": "20:00" },
+      "friday":    { "open": "07:00", "close": "20:00" },
+      "saturday":  { "open": "08:00", "close": "19:00" },
+      "sunday":    null
+    }
+  },
+  {
+    "id": "PP-75001-002",
+    "carrier": "mondial-relay",
+    "name": "Pressing du Centre",
+    "address": "42 Rue Saint-Honoré",
+    "city": "Paris",
+    "postal_code": "75001",
+    "country": "FR",
+    "coordinates": { "lat": 48.8623, "lng": 2.3401 },
+    "distance_km": 0.5,
+    "hours": {
+      "monday":    { "open": "09:00", "close": "19:00" },
+      "tuesday":   { "open": "09:00", "close": "19:00" },
+      "wednesday": { "open": "09:00", "close": "19:00" },
+      "thursday":  { "open": "09:00", "close": "19:00" },
+      "friday":    { "open": "09:00", "close": "19:00" },
+      "saturday":  { "open": "10:00", "close": "17:00" },
+      "sunday":    null
+    }
+  },
+  {
+    "id": "PP-75001-003",
+    "carrier": "mondial-relay",
+    "name": "Épicerie de la Paix",
+    "address": "8 Place du Palais Royal",
+    "city": "Paris",
+    "postal_code": "75001",
+    "country": "FR",
+    "coordinates": { "lat": 48.8645, "lng": 2.3371 },
+    "distance_km": 0.8,
+    "hours": {
+      "monday":    { "open": "08:00", "close": "21:00" },
+      "tuesday":   { "open": "08:00", "close": "21:00" },
+      "wednesday": { "open": "08:00", "close": "21:00" },
+      "thursday":  { "open": "08:00", "close": "21:00" },
+      "friday":    { "open": "08:00", "close": "21:00" },
+      "saturday":  { "open": "09:00", "close": "20:00" },
+      "sunday":    { "open": "10:00", "close": "13:00" }
+    }
+  },
+  {
+    "id": "PP-78570-001",
+    "carrier": "mondial-relay",
+    "name": "Tabac Presse du Centre",
+    "address": "12 Rue de la République",
+    "city": "Chanteloup-les-Vignes",
+    "postal_code": "78570",
+    "country": "FR",
+    "coordinates": { "lat": 48.9812, "lng": 2.0314 },
+    "distance_km": 0.3,
+    "hours": {
+      "monday":    { "open": "09:00", "close": "19:30" },
+      "tuesday":   { "open": "09:00", "close": "19:30" },
+      "wednesday": { "open": "09:00", "close": "19:30" },
+      "thursday":  { "open": "09:00", "close": "19:30" },
+      "friday":    { "open": "09:00", "close": "19:30" },
+      "saturday":  { "open": "09:00", "close": "12:00" },
+      "sunday":    null
+    }
+  },
+  {
+    "id": "PP-78570-002",
+    "carrier": "mondial-relay",
+    "name": "Pharmacie Martin",
+    "address": "3 Avenue des Marronniers",
+    "city": "Chanteloup-les-Vignes",
+    "postal_code": "78570",
+    "country": "FR",
+    "coordinates": { "lat": 48.9798, "lng": 2.0287 },
+    "distance_km": 0.7,
+    "hours": {
+      "monday":    { "open": "09:00", "close": "19:00" },
+      "tuesday":   { "open": "09:00", "close": "19:00" },
+      "wednesday": { "open": "09:00", "close": "19:00" },
+      "thursday":  { "open": "09:00", "close": "19:00" },
+      "friday":    { "open": "09:00", "close": "19:00" },
+      "saturday":  { "open": "09:00", "close": "12:30" },
+      "sunday":    null
+    }
+  },
+  {
+    "id": "PP-78570-003",
+    "carrier": "mondial-relay",
+    "name": "SuperU Chanteloup",
+    "address": "Route de Triel",
+    "city": "Chanteloup-les-Vignes",
+    "postal_code": "78570",
+    "country": "FR",
+    "coordinates": { "lat": 48.9834, "lng": 2.0356 },
+    "distance_km": 1.2,
+    "hours": {
+      "monday":    { "open": "08:30", "close": "20:30" },
+      "tuesday":   { "open": "08:30", "close": "20:30" },
+      "wednesday": { "open": "08:30", "close": "20:30" },
+      "thursday":  { "open": "08:30", "close": "20:30" },
+      "friday":    { "open": "08:30", "close": "20:30" },
+      "saturday":  { "open": "08:30", "close": "20:30" },
+      "sunday":    { "open": "09:00", "close": "13:00" }
+    }
+  },
+  {
+    "id": "PP-69001-001",
+    "carrier": "mondial-relay",
+    "name": "Relais Colis Terreaux",
+    "address": "22 Place des Terreaux",
+    "city": "Lyon",
+    "postal_code": "69001",
+    "country": "FR",
+    "coordinates": { "lat": 45.7676, "lng": 4.8334 },
+    "distance_km": 0.4,
+    "hours": {
+      "monday":    { "open": "09:00", "close": "19:00" },
+      "tuesday":   { "open": "09:00", "close": "19:00" },
+      "wednesday": { "open": "09:00", "close": "19:00" },
+      "thursday":  { "open": "09:00", "close": "19:00" },
+      "friday":    { "open": "09:00", "close": "19:00" },
+      "saturday":  { "open": "10:00", "close": "18:00" },
+      "sunday":    null
+    }
+  },
+  {
+    "id": "PP-69001-002",
+    "carrier": "mondial-relay",
+    "name": "Bureau de Tabac Croix-Rousse",
+    "address": "5 Boulevard de la Croix-Rousse",
+    "city": "Lyon",
+    "postal_code": "69001",
+    "country": "FR",
+    "coordinates": { "lat": 45.7701, "lng": 4.8312 },
+    "distance_km": 0.9,
+    "hours": {
+      "monday":    { "open": "07:00", "close": "20:00" },
+      "tuesday":   { "open": "07:00", "close": "20:00" },
+      "wednesday": { "open": "07:00", "close": "20:00" },
+      "thursday":  { "open": "07:00", "close": "20:00" },
+      "friday":    { "open": "07:00", "close": "20:00" },
+      "saturday":  { "open": "08:00", "close": "19:30" },
+      "sunday":    { "open": "09:00", "close": "12:00" }
+    }
+  }
+]

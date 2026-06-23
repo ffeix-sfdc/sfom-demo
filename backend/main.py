@@ -3,11 +3,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import asyncio
+import logging
 import os
 import shutil
 from pathlib import Path
-from routers import auth, orgs, orders, use_cases, catalogs, oci, delivery_estimate, checkout, slot_manager, tms, deploy, fulfillment, cache
+from routers import auth, orgs, orders, use_cases, catalogs, oci, delivery_estimate, checkout, slot_manager, tms, deploy, fulfillment, cache, pickup_points
 from services.sf_cli import refresh_orgs_cache
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)-8s %(name)s  %(message)s",
+    datefmt="%H:%M:%S",
+)
+logger = logging.getLogger("sfom")
 
 # Bootstrap app_state.json from example if missing (first-run on a fresh clone)
 _state_file = Path(__file__).parent / "app_state.json"
@@ -16,6 +24,16 @@ if not _state_file.exists() and _example_file.exists():
     shutil.copy(_example_file, _state_file)
 
 app = FastAPI(title="SFOM Demo API")
+
+
+@app.middleware("http")
+async def log_requests(request, call_next):
+    import time
+    start = time.monotonic()
+    response = await call_next(request)
+    ms = int((time.monotonic() - start) * 1000)
+    logger.info("%s %s → %d  (%dms)", request.method, request.url.path, response.status_code, ms)
+    return response
 
 
 @app.on_event("startup")
@@ -40,6 +58,7 @@ app.include_router(delivery_estimate.router, prefix="/delivery-estimate", tags=[
 app.include_router(checkout.router, prefix="/checkout", tags=["checkout"])
 app.include_router(slot_manager.router, prefix="/slot-manager", tags=["slot-manager"])
 app.include_router(tms.router, prefix="/tms", tags=["tms"])
+app.include_router(pickup_points.router, prefix="/pickup-points", tags=["pickup-points"])
 app.include_router(deploy.router, prefix="/deploy", tags=["deploy"])
 app.include_router(fulfillment.router, prefix="/fulfillment", tags=["fulfillment"])
 app.include_router(cache.router, prefix="/cache", tags=["cache"])

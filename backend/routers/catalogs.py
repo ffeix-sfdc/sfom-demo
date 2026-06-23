@@ -29,9 +29,13 @@ _CATALOG_DEFAULTS = {
     "webstore_id": "",
     "sales_channel_id": "",
     "payment_gateway_id": "",
+    "gift_card_payment_gateway_id": "",
     "pickup_delivery_method_id": "",
     "pickup_shipping_unit_price": 0,
     "pickup_shipping_tax_rate": 5,
+    "pickup_point_delivery_method_id": "",
+    "pickup_point_shipping_unit_price": 0,
+    "pickup_point_shipping_tax_rate": 20,
     "transfer_delivery_method_id": "",
     "transfer_shipping_unit_price": 0,
     "transfer_shipping_tax_rate": 5,
@@ -78,6 +82,9 @@ def _list_catalogs() -> list:
                 "pickup_delivery_method_id": data.get("pickup_delivery_method_id", ""),
                 "pickup_shipping_unit_price": data.get("pickup_shipping_unit_price", 0),
                 "pickup_shipping_tax_rate": data.get("pickup_shipping_tax_rate", 5),
+                "pickup_point_delivery_method_id": data.get("pickup_point_delivery_method_id", ""),
+                "pickup_point_shipping_unit_price": data.get("pickup_point_shipping_unit_price", 0),
+                "pickup_point_shipping_tax_rate": data.get("pickup_point_shipping_tax_rate", 20),
                 "transfer_delivery_method_id": data.get("transfer_delivery_method_id", ""),
                 "transfer_shipping_unit_price": data.get("transfer_shipping_unit_price", 0),
                 "transfer_shipping_tax_rate": data.get("transfer_shipping_tax_rate", 5),
@@ -86,6 +93,7 @@ def _list_catalogs() -> list:
                 "standard_shipping_tax_rate": data.get("standard_shipping_tax_rate", 5),
                 "default_tax_rate": data.get("default_tax_rate", 0),
                 "payment_gateway_id": data.get("payment_gateway_id", ""),
+                "gift_card_payment_gateway_id": data.get("gift_card_payment_gateway_id", ""),
                 "product_count": len(data.get("products", [])),
             })
         except Exception:
@@ -111,6 +119,9 @@ class CatalogIn(BaseModel):
     pickup_delivery_method_id: Optional[str] = ""
     pickup_shipping_unit_price: Optional[float] = 0
     pickup_shipping_tax_rate: Optional[float] = 5
+    pickup_point_delivery_method_id: Optional[str] = ""
+    pickup_point_shipping_unit_price: Optional[float] = 0
+    pickup_point_shipping_tax_rate: Optional[float] = 20
     transfer_delivery_method_id: Optional[str] = ""
     transfer_shipping_unit_price: Optional[float] = 0
     transfer_shipping_tax_rate: Optional[float] = 5
@@ -119,6 +130,7 @@ class CatalogIn(BaseModel):
     standard_shipping_tax_rate: Optional[float] = 5
     default_tax_rate: Optional[float] = 0
     payment_gateway_id: Optional[str] = ""
+    gift_card_payment_gateway_id: Optional[str] = ""
 
 
 class AttributeIn(BaseModel):
@@ -177,6 +189,9 @@ def create_catalog(body: CatalogIn):
         "pickup_delivery_method_id": body.pickup_delivery_method_id or "",
         "pickup_shipping_unit_price": body.pickup_shipping_unit_price or 0,
         "pickup_shipping_tax_rate": body.pickup_shipping_tax_rate or 5,
+        "pickup_point_delivery_method_id": body.pickup_point_delivery_method_id or "",
+        "pickup_point_shipping_unit_price": body.pickup_point_shipping_unit_price or 0,
+        "pickup_point_shipping_tax_rate": body.pickup_point_shipping_tax_rate or 20,
         "transfer_delivery_method_id": body.transfer_delivery_method_id or "",
         "transfer_shipping_unit_price": body.transfer_shipping_unit_price or 0,
         "transfer_shipping_tax_rate": body.transfer_shipping_tax_rate or 5,
@@ -185,6 +200,7 @@ def create_catalog(body: CatalogIn):
         "standard_shipping_tax_rate": body.standard_shipping_tax_rate or 5,
         "default_tax_rate": body.default_tax_rate or 0,
         "payment_gateway_id": body.payment_gateway_id or "",
+        "gift_card_payment_gateway_id": body.gift_card_payment_gateway_id or "",
         "products": [],
     }
     _save_catalog(catalog)
@@ -216,6 +232,9 @@ def update_catalog(catalog_id: int, body: CatalogIn):
     catalog["pickup_delivery_method_id"] = body.pickup_delivery_method_id or ""
     catalog["pickup_shipping_unit_price"] = body.pickup_shipping_unit_price or 0
     catalog["pickup_shipping_tax_rate"] = body.pickup_shipping_tax_rate or 5
+    catalog["pickup_point_delivery_method_id"] = body.pickup_point_delivery_method_id or ""
+    catalog["pickup_point_shipping_unit_price"] = body.pickup_point_shipping_unit_price or 0
+    catalog["pickup_point_shipping_tax_rate"] = body.pickup_point_shipping_tax_rate or 20
     catalog["transfer_delivery_method_id"] = body.transfer_delivery_method_id or ""
     catalog["transfer_shipping_unit_price"] = body.transfer_shipping_unit_price or 0
     catalog["transfer_shipping_tax_rate"] = body.transfer_shipping_tax_rate or 5
@@ -224,6 +243,7 @@ def update_catalog(catalog_id: int, body: CatalogIn):
     catalog["standard_shipping_tax_rate"] = body.standard_shipping_tax_rate or 5
     catalog["default_tax_rate"] = body.default_tax_rate or 0
     catalog["payment_gateway_id"] = body.payment_gateway_id or ""
+    catalog["gift_card_payment_gateway_id"] = body.gift_card_payment_gateway_id or ""
     _save_catalog(catalog)
     return catalog
 

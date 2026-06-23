@@ -242,6 +242,20 @@ const t = {
     ecomAddToCart: "Add to Cart",
     ecomAddToCartPickup: "Add to Cart — Pickup",
 
+    // Pickup Point
+    pickupPointTitle: "Pickup Point",
+    pickupPointSearch: "Find a pickup point",
+    pickupPointPostalCode: "Postal code",
+    pickupPointSearchBtn: "Search",
+    pickupPointSelect: "Select",
+    pickupPointSelected: "Pickup point selected",
+    pickupPointNoResults: "No pickup points found for this postal code.",
+    pickupPointDistance: (km) => `${km} km`,
+    pickupPointHours: "Hours",
+    pickupPointClosed: "Closed",
+    pickupPointChange: "Change",
+    pickupPointDelivery: "Pickup Point Delivery",
+
     // EcomForm — PDP
     ecomBack: "← Back",
     ecomDescription: "Description",
@@ -531,6 +545,20 @@ const t = {
     ecomAddToCart: "Ajouter au panier",
     ecomAddToCartPickup: "Ajouter au panier — Retrait",
 
+    // Pickup Point
+    pickupPointTitle: "Point Relais",
+    pickupPointSearch: "Trouver un point relais",
+    pickupPointPostalCode: "Code postal",
+    pickupPointSearchBtn: "Rechercher",
+    pickupPointSelect: "Choisir",
+    pickupPointSelected: "Point relais sélectionné",
+    pickupPointNoResults: "Aucun point relais trouvé pour ce code postal.",
+    pickupPointDistance: (km) => `${km} km`,
+    pickupPointHours: "Horaires",
+    pickupPointClosed: "Fermé",
+    pickupPointChange: "Modifier",
+    pickupPointDelivery: "Livraison en Point Relais",
+
     // EcomForm — PDP
     ecomBack: "← Retour",
     ecomDescription: "Description",
@@ -819,6 +847,20 @@ const t = {
     ecomNoProductsInCategory: "No hay productos en esta categoría.",
     ecomAddToCart: "Añadir al carrito",
     ecomAddToCartPickup: "Añadir al carrito — Recogida",
+
+    // Pickup Point
+    pickupPointTitle: "Punto de Recogida",
+    pickupPointSearch: "Encontrar un punto de recogida",
+    pickupPointPostalCode: "Código postal",
+    pickupPointSearchBtn: "Buscar",
+    pickupPointSelect: "Seleccionar",
+    pickupPointSelected: "Punto de recogida seleccionado",
+    pickupPointNoResults: "No se encontraron puntos de recogida para este código postal.",
+    pickupPointDistance: (km) => `${km} km`,
+    pickupPointHours: "Horario",
+    pickupPointClosed: "Cerrado",
+    pickupPointChange: "Cambiar",
+    pickupPointDelivery: "Entrega en Punto de Recogida",
 
     // EcomForm — PDP
     ecomBack: "← Volver",
