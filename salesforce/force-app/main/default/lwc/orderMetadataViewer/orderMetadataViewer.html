@@ -1,0 +1,131 @@
+<template>
+    <!-- Only render if metadata has content -->
+    <template lwc:if={hasMetadata}>
+        <lightning-card title="Order Metadata" icon-name="standard:orders">
+
+            <div class="slds-p-horizontal_medium slds-p-bottom_medium slds-grid slds-wrap slds-gutters_small">
+
+                <!-- ── Pickup Slots (BOPIS) ─────────────────────────── -->
+                <template lwc:if={hasPickupSlots}>
+                    <div class="slds-col slds-size_1-of-1 slds-m-bottom_small">
+                        <div class="section-header">
+                            <lightning-icon icon-name="standard:location" size="x-small" class="slds-m-right_x-small"></lightning-icon>
+                            <span class="slds-text-heading_small slds-text-color_default">In-Store Pickup Slots</span>
+                        </div>
+                        <div class="slds-grid slds-wrap slds-gutters_x-small slds-m-top_x-small">
+                            <template for:each={pickupSlots} for:item="slot">
+                                <div key={slot.key} class="slds-col slds-size_1-of-2 slds-large-size_1-of-3">
+                                    <div class="card card--green">
+                                        <div class="card__badge">Group {slot.deliveryGroupIndex}</div>
+                                        <div class="card__title">{slot.locationName}</div>
+                                        <template lwc:if={slot.locationExtRef}>
+                                            <div class="card__subtitle">{slot.locationExtRef}</div>
+                                        </template>
+                                        <div class="card__row">
+                                            <lightning-icon icon-name="utility/event" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                                            <span>{slot.pickupDate}</span>
+                                        </div>
+                                        <div class="card__row">
+                                            <lightning-icon icon-name="utility/clock" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                                            <span>{slot.pickupTime}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- ── TMS Bookings (Home Delivery Slots) ──────────── -->
+                <template lwc:if={hasTmsBookings}>
+                    <div class="slds-col slds-size_1-of-1 slds-m-bottom_small">
+                        <div class="section-header">
+                            <lightning-icon icon-name="standard:service_territory" size="x-small" class="slds-m-right_x-small"></lightning-icon>
+                            <span class="slds-text-heading_small slds-text-color_default">Home Delivery Slots</span>
+                        </div>
+                        <div class="slds-grid slds-wrap slds-gutters_x-small slds-m-top_x-small">
+                            <template for:each={tmsBookings} for:item="booking">
+                                <div key={booking.key} class="slds-col slds-size_1-of-2 slds-large-size_1-of-3">
+                                    <div class="card card--blue">
+                                        <div class="card__badge">Group {booking.deliveryGroupIndex}</div>
+                                        <div class="card__title">{booking.shippingMethodName}</div>
+                                        <div class="card__row">
+                                            <lightning-icon icon-name="utility/event" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                                            <span>{booking.deliveryDate}</span>
+                                        </div>
+                                        <div class="card__row">
+                                            <lightning-icon icon-name="utility/clock" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                                            <span>{booking.window}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- ── Pickup Points (Relay) ────────────────────────── -->
+                <template lwc:if={hasPickupPoints}>
+                    <div class="slds-col slds-size_1-of-1 slds-m-bottom_small">
+                        <div class="section-header">
+                            <lightning-icon icon-name="standard:address" size="x-small" class="slds-m-right_x-small"></lightning-icon>
+                            <span class="slds-text-heading_small slds-text-color_default">Pickup Points</span>
+                        </div>
+                        <div class="slds-grid slds-wrap slds-gutters_x-small slds-m-top_x-small">
+                            <template for:each={pickupPoints} for:item="point">
+                                <div key={point.key} class="slds-col slds-size_1-of-2 slds-large-size_1-of-3">
+                                    <div class="card card--purple">
+                                        <div class="card__badge">Group {point.deliveryGroupIndex}</div>
+                                        <div class="card__carrier">{point.carrier}</div>
+                                        <div class="card__title">{point.name}</div>
+                                        <div class="card__row">
+                                            <lightning-icon icon-name="utility/location" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                                            <span>{point.address}</span>
+                                        </div>
+                                        <div class="card__row">
+                                            <lightning-icon icon-name="utility/info" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                                            <span class="slds-text-color_weak">{point.id}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- ── Gift Card ────────────────────────────────────── -->
+                <template lwc:if={hasGiftCard}>
+                    <div class="slds-col slds-size_1-of-1 slds-m-bottom_small">
+                        <div class="section-header">
+                            <lightning-icon icon-name="standard:reward" size="x-small" class="slds-m-right_x-small"></lightning-icon>
+                            <span class="slds-text-heading_small slds-text-color_default">Gift Card</span>
+                        </div>
+                        <div class="slds-m-top_x-small">
+                            <div class="card card--orange card--inline">
+                                <div class="card__row">
+                                    <lightning-icon icon-name="utility/gift_card" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                                    <span class="card__title">{giftCard.maskedNumber}</span>
+                                </div>
+                                <div class="card__row">
+                                    <lightning-icon icon-name="utility/currency" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                                    <span>Amount applied: <strong>{giftCard.amount}</strong></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+
+            </div>
+        </lightning-card>
+    </template>
+
+    <!-- Error state -->
+    <template lwc:if={error}>
+        <lightning-card title="Order Metadata" icon-name="standard:orders">
+            <div class="slds-p-medium">
+                <lightning-icon icon-name="utility/error" size="small" variant="error" class="slds-m-right_x-small"></lightning-icon>
+                <span class="slds-text-color_error">{error}</span>
+            </div>
+        </lightning-card>
+    </template>
+</template>
