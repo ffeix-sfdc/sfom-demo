@@ -6,9 +6,6 @@ from typing import Optional
 
 _orgs_cache: Optional[list] = None
 
-_SFDX_DIR = os.path.expanduser("~/.sfdx")
-
-
 def _run(cmd: list[str]) -> dict:
     result = subprocess.run(cmd, capture_output=True, text=True)
     try:
@@ -17,33 +14,16 @@ def _run(cmd: list[str]) -> dict:
         raise RuntimeError(result.stderr or result.stdout)
 
 
-def _alias_map() -> dict:
-    path = os.path.join(_SFDX_DIR, "alias.json")
-    try:
-        d = json.load(open(path))
-        return d.get("orgs", {})
-    except Exception:
-        return {}
-
-
 def get_org_token(alias: str) -> dict:
-    """Get a valid access token via sf org auth show-access-token (refreshes automatically)."""
-    token_data = _run(["sf", "org", "auth", "show-access-token", "--target-org", alias, "--json"])
-    access_token = token_data.get("result", {}).get("accessToken", "")
+    """Get a valid access token via sf org display (works on all SF CLI versions)."""
+    token_data = _run(["sf", "org", "display", "--target-org", alias, "--json"])
+    result = token_data.get("result", {})
+    access_token = result.get("accessToken", "")
     if not access_token:
         raise RuntimeError(f"Could not retrieve access token for '{alias}' — please re-authenticate")
 
-    # Get instance URL from alias map + credential file (no extra CLI call)
-    aliases = _alias_map()
-    username = aliases.get(alias) or alias
-    cred_file = os.path.join(_SFDX_DIR, f"{username}.json")
-    instance_url = ""
-    if os.path.exists(cred_file):
-        try:
-            creds = json.load(open(cred_file))
-            instance_url = creds.get("instanceUrl", "")
-        except Exception:
-            pass
+    instance_url = result.get("instanceUrl", "")
+    username = result.get("username", alias)
 
     return {
         "alias": alias,
@@ -54,7 +34,7 @@ def get_org_token(alias: str) -> dict:
 
 
 def refresh_org_token(alias: str) -> dict:
-    """Same as get_org_token — sf org auth show-access-token handles OAuth refresh internally."""
+    """Same as get_org_token — sf org display handles OAuth refresh internally."""
     return get_org_token(alias)
 
 
