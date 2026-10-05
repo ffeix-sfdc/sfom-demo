@@ -8,6 +8,9 @@ from services.org_store import get_active_alias, _load as state_load, _save as s
 import httpx
 import uuid
 import time
+import logging
+
+logger = logging.getLogger("sfom.cds")
 
 router = APIRouter()
 
@@ -80,25 +83,30 @@ async def cds_post(path: str, payload: dict) -> dict:
             h["SALESFORCE_COMMERCE_API"] = cfg["org_short_code"]
         return h
 
-    async with httpx.AsyncClient() as client:
-        resp = await client.post(url, json=payload, headers=_build_headers(token))
-        if resp.status_code in (401, 403):
-            # Force token refresh and retry once
-            _token_cache["token"] = None
-            _token_cache["expires_at"] = 0
-            token = await get_cds_token()
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await client.post(url, json=payload, headers=_build_headers(token))
-        if not resp.is_success:
-            try:
-                detail = resp.json()
-            except Exception:
-                detail = resp.text or f"(empty) — {url}"
-            if not detail:
-                detail = f"(empty) — {url}"
-            raise HTTPException(status_code=resp.status_code, detail=detail)
-        if not resp.content:
-            return {}
-        return resp.json()
+            if resp.status_code in (401, 403):
+                _token_cache["token"] = None
+                _token_cache["expires_at"] = 0
+                token = await get_cds_token()
+                resp = await client.post(url, json=payload, headers=_build_headers(token))
+            if not resp.is_success:
+                try:
+                    detail = resp.json()
+                except Exception:
+                    detail = resp.text or f"(empty) — {url}"
+                if not detail:
+                    detail = f"(empty) — {url}"
+                logger.error("CDS %s → %d  %s", url, resp.status_code, detail)
+                raise HTTPException(status_code=resp.status_code, detail=detail)
+            if not resp.content:
+                return {}
+            return resp.json()
+    except HTTPException:
+        raise
+    except (httpx.ConnectTimeout, httpx.ReadTimeout, httpx.ConnectError) as exc:
+        raise HTTPException(status_code=504, detail=f"CDS unreachable: {type(exc).__name__}")
 
 
 # ── Config endpoints ─────────────────────────────────────────────────────────
