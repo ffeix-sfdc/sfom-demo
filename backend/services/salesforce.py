@@ -125,6 +125,36 @@ async def sf_delete(path: str, alias: str = None) -> None:
         _raise_sf_error(resp, path)
 
 
+async def sf_delete_bulk(ids: list[str], alias: str = None) -> dict:
+    """Delete up to 200 records in a single request using composite sobjects API."""
+    if not ids:
+        return {"deleted": 0}
+    org = _get_org(alias)
+    SF_API = f"/services/data/v65.0"
+    deleted = 0
+    for i in range(0, len(ids), 200):
+        chunk = ids[i:i + 200]
+        path = f"{SF_API}/composite/sobjects?ids={','.join(chunk)}&allOrNone=false"
+        url = f"{org['instance_url']}{path}"
+        logger.info("SF DELETE bulk %d records (alias=%s)", len(chunk), alias or get_active_alias())
+        try:
+            async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+                resp = await client.delete(url, headers={"Authorization": f"Bearer {org['access_token']}"})
+                if _is_auth_error(resp):
+                    org = await asyncio.get_event_loop().run_in_executor(None, refresh_org_token, alias or get_active_alias())
+                    resp = await client.delete(url, headers={"Authorization": f"Bearer {org['access_token']}"})
+                    if _is_auth_error(resp):
+                        raise _auth_expired_error()
+        except HTTPException:
+            raise
+        except (httpx.ConnectTimeout, httpx.ReadTimeout, httpx.ConnectError) as exc:
+            raise _network_error(exc)
+        if not resp.is_success:
+            _raise_sf_error(resp, path)
+        deleted += len(chunk)
+    return {"deleted": deleted}
+
+
 async def sf_post(path: str, payload: dict, alias: str = None) -> dict:
     org = _get_org(alias)
     url = f"{org['instance_url']}{path}"

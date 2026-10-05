@@ -1,7 +1,7 @@
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional, List
-from services.salesforce import sf_get, sf_post, sf_patch, sf_delete
+from services.salesforce import sf_get, sf_post, sf_patch, sf_delete, sf_delete_bulk
 from services.org_store import get_active_alias
 from services.sf_cache import cached_sf_get, invalidate_key, invalidate_prefix
 import random
@@ -407,10 +407,8 @@ async def clean_bookings(body: CleanBody):
     result = await sf_get(f"{SF_API}/query", params={"q": soql})
     ids = [r["Id"] for r in result.get("records", [])]
 
-    deleted = 0
-    for record_id in ids:
-        await sf_delete(f"{SF_API}/sobjects/SlotBooking__c/{record_id}")
-        deleted += 1
+    await sf_delete_bulk(ids)
+    deleted = len(ids)
 
     alias = get_active_alias()
     if body.config_id:
