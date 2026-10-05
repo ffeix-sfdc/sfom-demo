@@ -47,6 +47,62 @@
         <object>TmsBooking__c</object>
         <viewAllRecords>true</viewAllRecords>
     </objectPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>SlotBooking__c.OrderSummary__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>SlotBooking__c.FulfillmentOrder__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>TmsConfig__c.CarrierRef__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>TmsConfig__c.CutoffTime__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>TmsConfig__c.TransitDaysMin__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>TmsConfig__c.TransitDaysMax__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>TmsConfig__c.OperatingDays__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>TmsConfig__c.IsActive__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>TmsBooking__c.PostalCode__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>TmsBooking__c.OrderSummary__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>TmsBooking__c.FulfillmentOrder__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+
     <tabSettings>
         <tab>SlotConfig__c</tab>
         <visibility>Available</visibility>
