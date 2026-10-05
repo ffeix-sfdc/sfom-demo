@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from services.salesforce import sf_get, sf_patch
 
 router = APIRouter()
-SF_API = "/services/data/v65.0"
+from services.sf_version import SF_API
 
 PICKUP_RT = "Store_Pickup_RecordType"
 SHIP_RT   = "Ship_From_Store"

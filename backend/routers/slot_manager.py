@@ -8,7 +8,7 @@ import random
 from datetime import date, datetime, timedelta
 
 router = APIRouter()
-SF_API = "/services/data/v65.0"
+from services.sf_version import SF_API
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 

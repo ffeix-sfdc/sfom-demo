@@ -13,7 +13,7 @@ from datetime import date
 
 router = APIRouter()
 
-SF_API = "/services/data/v65.0"
+from services.sf_version import SF_API, versioned
 
 
 class OciReservationItem(BaseModel):
@@ -330,7 +330,7 @@ async def upload_stock_records(body: StockUploadBody):
     if not org:
         raise HTTPException(status_code=503, detail="No active org")
 
-    url = f"{org['instance_url']}{SF_API}/commerce/oci/availability-records/uploads"
+    url = f"{org['instance_url']}{versioned(SF_API, org)}/commerce/oci/availability-records/uploads"
     headers = {
         "Authorization": f"Bearer {org['access_token']}",
         "Content-Type": f"multipart/form-data; boundary={boundary}",

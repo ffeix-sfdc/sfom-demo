@@ -7,9 +7,10 @@ import zipfile
 import io
 import os
 import base64
+import re
 
 router = APIRouter()
-SF_API = "/services/data/v65.0"
+from services.sf_version import SF_API, SOAP_API, effective_version, versioned
 
 OBJECTS = ["SlotConfig__c", "SlotBooking__c", "TmsConfig__c", "TmsTimeWindow__c", "TmsBooking__c"]
 TABS = ["SlotConfig__c", "SlotBooking__c", "TmsConfig__c", "TmsTimeWindow__c", "TmsBooking__c"]
@@ -82,10 +83,12 @@ async def deploy_status():
 
 # ── Deploy ───────────────────────────────────────────────────────────────────
 
-def _build_zip() -> bytes:
+def _build_zip(api_version: str) -> bytes:
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        zf.write(os.path.join(METADATA_DIR, "package.xml"), "package.xml")
+        with open(os.path.join(METADATA_DIR, "package.xml")) as f:
+            package_xml = re.sub(r"<version>[\d.]+</version>", f"<version>{api_version}</version>", f.read())
+        zf.writestr("package.xml", package_xml)
         for obj in OBJECTS:
             p = os.path.join(METADATA_DIR, f"{obj}.object-meta.xml")
             if os.path.exists(p):
@@ -112,7 +115,7 @@ async def start_deploy():
         raise HTTPException(status_code=400, detail="No active org")
     org = get_org_token(alias)
 
-    zip_bytes = _build_zip()
+    zip_bytes = _build_zip(effective_version(org))
     zip_b64 = base64.b64encode(zip_bytes).decode()
 
     soap_body = f"""<?xml version="1.0" encoding="utf-8"?>
@@ -143,7 +146,7 @@ async def start_deploy():
   </soapenv:Body>
 </soapenv:Envelope>"""
 
-    url = f"{org['instance_url']}/services/Soap/m/65.0"
+    url = f"{org['instance_url']}{versioned(SOAP_API, org)}"
     async with httpx.AsyncClient() as client:
         resp = await client.post(
             url,
@@ -193,7 +196,7 @@ async def poll_deploy(job_id: str):
   </soapenv:Body>
 </soapenv:Envelope>"""
 
-    url = f"{org['instance_url']}/services/Soap/m/65.0"
+    url = f"{org['instance_url']}{versioned(SOAP_API, org)}"
     async with httpx.AsyncClient() as client:
         resp = await client.post(
             url,

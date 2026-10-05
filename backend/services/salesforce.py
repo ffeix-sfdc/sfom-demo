@@ -4,6 +4,7 @@ import httpx
 from fastapi import HTTPException
 from services.org_store import get_active_alias
 from services.sf_cli import get_org_token, refresh_org_token
+from services.sf_version import SF_API, versioned
 
 logger = logging.getLogger("sfom.sf")
 
@@ -53,6 +54,7 @@ def _raise_sf_error(resp: httpx.Response, path: str = "") -> None:
 
 async def sf_get(path: str, alias: str = None, params: dict = None) -> dict:
     org = _get_org(alias)
+    path = versioned(path, org)
     url = f"{org['instance_url']}{path}"
     logger.info("SF GET %s (alias=%s)", path, alias or get_active_alias())
     try:
@@ -78,6 +80,7 @@ async def sf_get(path: str, alias: str = None, params: dict = None) -> dict:
 
 async def sf_patch(path: str, payload: dict, alias: str = None) -> dict:
     org = _get_org(alias)
+    path = versioned(path, org)
     url = f"{org['instance_url']}{path}"
     logger.info("SF PATCH %s (alias=%s)", path, alias or get_active_alias())
     headers = {"Authorization": f"Bearer {org['access_token']}", "Content-Type": "application/json"}
@@ -105,6 +108,7 @@ async def sf_patch(path: str, payload: dict, alias: str = None) -> dict:
 
 async def sf_delete(path: str, alias: str = None) -> None:
     org = _get_org(alias)
+    path = versioned(path, org)
     url = f"{org['instance_url']}{path}"
     logger.info("SF DELETE %s (alias=%s)", path, alias or get_active_alias())
     try:
@@ -130,11 +134,10 @@ async def sf_delete_bulk(ids: list[str], alias: str = None) -> dict:
     if not ids:
         return {"deleted": 0}
     org = _get_org(alias)
-    SF_API = f"/services/data/v65.0"
     deleted = 0
     for i in range(0, len(ids), 200):
         chunk = ids[i:i + 200]
-        path = f"{SF_API}/composite/sobjects?ids={','.join(chunk)}&allOrNone=false"
+        path = versioned(f"{SF_API}/composite/sobjects?ids={','.join(chunk)}&allOrNone=false", org)
         url = f"{org['instance_url']}{path}"
         logger.info("SF DELETE bulk %d records (alias=%s)", len(chunk), alias or get_active_alias())
         try:
@@ -157,6 +160,7 @@ async def sf_delete_bulk(ids: list[str], alias: str = None) -> dict:
 
 async def sf_post(path: str, payload: dict, alias: str = None) -> dict:
     org = _get_org(alias)
+    path = versioned(path, org)
     url = f"{org['instance_url']}{path}"
     logger.info("SF POST %s (alias=%s)", path, alias or get_active_alias())
     headers = {"Authorization": f"Bearer {org['access_token']}", "Content-Type": "application/json"}

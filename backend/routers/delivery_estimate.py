@@ -14,7 +14,7 @@ logger = logging.getLogger("sfom.cds")
 
 router = APIRouter()
 
-SF_API = "/services/data/v65.0"
+from services.sf_version import SF_API
 CDS_BASE = "https://api.salesforce.com/commerce/delivery"
 CDS_TOKEN_URL = "https://account.demandware.com/dw/oauth2/access_token"
 

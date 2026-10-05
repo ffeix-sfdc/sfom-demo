@@ -10,8 +10,7 @@ from services.sf_cache import cached_sf_get
 
 router = APIRouter()
 
-SF_API = "/services/data/v65.0"
-CONNECT_API = "/services/data/v65.0/connect"
+from services.sf_version import SF_API, CONNECT_API
 
 
 # ── Sequence ─────────────────────────────────────────────────────────────────
@@ -146,7 +145,7 @@ async def get_countries():
     alias = get_active_alias()
     result = await cached_sf_get(
         alias, "countries", sf_get,
-        "/services/data/v65.0/ui-api/object-info/Account/picklist-values/012000000000000AAA/BillingCountryCode",
+        f"{SF_API}/ui-api/object-info/Account/picklist-values/012000000000000AAA/BillingCountryCode",
     )
     values = result.get("values", [])
     return [{"code": v["value"], "label": v["label"]} for v in values if v.get("value")]
@@ -157,7 +156,7 @@ async def get_states(country: str = ""):
     alias = get_active_alias()
     result = await cached_sf_get(
         alias, "states", sf_get,
-        "/services/data/v65.0/ui-api/object-info/Account/picklist-values/012000000000000AAA/BillingStateCode",
+        f"{SF_API}/ui-api/object-info/Account/picklist-values/012000000000000AAA/BillingStateCode",
     )
     controller_values = result.get("controllerValues", {})
     values = result.get("values", [])

@@ -155,4 +155,4 @@ sfom-demo/
 
 - **No secrets in this repo.** `app_state.json` (which stores CDS credentials and the active org alias) is gitignored. The app creates it automatically on first launch from `app_state.example.json`.
 - **Single-user only.** This app is designed for local demo use, not multi-tenant or production deployment.
-- **SF API version:** v65.0
+- **SF API version:** apiVersion of the target org (from `sf org display`), capped at v68.0 (Winter '27) — override the cap with `SF_API_VERSION`
