@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
-from services.salesforce import sf_get
+from services.salesforce import sf_get, sf_post
 from services.org_store import get_active_alias
 from services.sf_cache import cached_sf_get
 from services.org_store import get_active_alias, _load as state_load, _save as state_save
@@ -238,14 +238,51 @@ async def get_delivery_estimate(body: DeliveryEstimateRequest):
         if body.locations:
             payload["locations"] = body.locations
 
-        path = (
-            "/v2/estimate/delivery-date-by-locations"
-            if body.operation == "delivery-date-by-locations"
-            else "/v2/estimate/delivery-date"
-        )
-        result = await cds_post(path, payload)
+        if body.operation == "delivery-date-by-locations":
+            # v1, not v2: v2 by-locations ignores `locations` and routes the whole
+            # location group with DRE (sf-oms-core E-282). v1 estimates each requested
+            # location but skips inventory, so OCI availability is returned alongside.
+            result = await cds_post("/v1/estimate/delivery-date-by-locations", payload)
+            # Unknown locations come back as per-entry LOCATION_NOT_FOUND; OCI would
+            # reject the whole availability call for them, so leave them out.
+            unknown = {
+                e.get("location") for e in result.get("deliveryEstimates", [])
+                if (e.get("error") or {}).get("code") == "LOCATION_NOT_FOUND"
+            }
+            availability = await _availability_by_location(
+                [l for l in body.locations if l not in unknown],
+                [p["stockKeepingUnit"] for p in prods],
+            )
+            return {"payload": payload, "result": result, "availability": availability}
+        result = await cds_post("/v2/estimate/delivery-date", payload)
 
     return {"payload": payload, "result": result}
+
+
+async def _availability_by_location(locations: List[str], skus: List[str]) -> dict:
+    """OCI availability as { location: { sku: {atf, ato, onHand} } } — {} on failure."""
+    if not locations or not skus:
+        return {}
+    try:
+        result = await sf_post(
+            f"{SF_API}/commerce/oci/availability/availability-records/actions/get-availability",
+            {"locationIdentifiers": locations, "stockKeepingUnits": skus, "useCache": False},
+        )
+    except Exception as exc:
+        logger.warning("OCI availability for by-locations estimate failed: %s", exc)
+        return {}
+    out: dict = {}
+    for loc in result.get("locations", []):
+        records = loc.get("inventoryRecords") or loc.get("availabilityRecords") or []
+        out[loc.get("locationIdentifier")] = {
+            r.get("stockKeepingUnit"): {
+                "atf": r.get("availableToFulfill"),
+                "ato": r.get("availableToOrder"),
+                "onHand": r.get("onHand"),
+            }
+            for r in records
+        }
+    return out
 
 
 # ── Salesforce reference data ────────────────────────────────────────────────
