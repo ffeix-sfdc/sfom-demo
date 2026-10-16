@@ -111,7 +111,7 @@ function fmtDateRange(obj) {
 }
 
 // Floating result popup
-function DeResult({ operation, result, onClose }) {
+function DeResult({ operation, result, availability, onClose }) {
   if (!result) return null;
 
   const renderDelivery = () => {
@@ -119,9 +119,31 @@ function DeResult({ operation, result, onClose }) {
     if (estimates.length === 0) {
       return <pre className="text-xs whitespace-pre-wrap text-gray-600">{JSON.stringify(result, null, 2)}</pre>;
     }
-    // Flatten: for each deliveryGroup → for each deliveryEstimateGroup entry → for each shippingMethod → one row
     const rows = [];
     estimates.forEach((grp) => {
+      // v1 (by-locations): flat — location × method per entry, dates per product (sic "productDeliverEstimations")
+      if (!grp.deliveryEstimateGroup) {
+        const method = grp.shippingCarrierMethod || "—";
+        if (grp.error) {
+          rows.push({ location: grp.location || "—", skus: "", method, shipDate: "—", deliveryDate: "—", error: grp.error.message || grp.error.code });
+          return;
+        }
+        (grp.productDeliverEstimations || []).forEach((p) => {
+          rows.push({
+            location: grp.location || "—",
+            skus: `${p.stockKeepingUnit} ×${p.quantity}`,
+            method,
+            routing: p.routingCalculationType || "",
+            shipDate: fmtDateRange(p.estimatedShipDate),
+            deliveryDate: fmtDateRange(p.estimatedDeliveryDate),
+            atf: availability?.[grp.location]?.[p.stockKeepingUnit]?.atf,
+            quantity: p.quantity,
+            error: null,
+          });
+        });
+        return;
+      }
+      // v2: for each deliveryEstimateGroup entry → for each shippingMethod → one row
       (grp.deliveryEstimateGroup || []).forEach((eg) => {
         if (eg.error) {
           rows.push({ location: eg.location, skus: "", method: "—", shipDate: "—", deliveryDate: "—", error: eg.error.message || eg.error.code });
@@ -145,11 +167,14 @@ function DeResult({ operation, result, onClose }) {
       });
     });
 
+    // v1 by-locations skips inventory — show OCI ATF so a date for an out-of-stock store is visible as such
+    const showAtf = !!availability;
+
     return (
       <table className="w-full text-xs border-collapse">
         <thead>
           <tr className="bg-gray-50">
-            {["Location", "SKUs", "Shipping Method", "Routing", "Est. Ship Date", "Est. Delivery Date"].map((h) => (
+            {["Location", "SKUs", ...(showAtf ? ["ATF"] : []), "Shipping Method", "Routing", "Est. Ship Date", "Est. Delivery Date"].map((h) => (
               <th key={h} className="border border-gray-200 px-3 py-1.5 text-left font-medium text-gray-600">{h}</th>
             ))}
           </tr>
@@ -159,6 +184,11 @@ function DeResult({ operation, result, onClose }) {
             <tr key={ri} className={ri % 2 === 0 ? "" : "bg-gray-50"}>
               <td className="border border-gray-200 px-3 py-1.5 text-[#00A1E0] font-medium">{r.location}</td>
               <td className="border border-gray-200 px-3 py-1.5 font-mono">{r.skus}</td>
+              {showAtf && (
+                <td className={`border border-gray-200 px-3 py-1.5 ${r.atf != null && r.atf < r.quantity ? "text-red-600 font-medium" : ""}`}>
+                  {r.atf ?? ""}
+                </td>
+              )}
               <td className="border border-gray-200 px-3 py-1.5">{r.method}</td>
               <td className="border border-gray-200 px-3 py-1.5 text-gray-500">{r.routing}</td>
               <td className="border border-gray-200 px-3 py-1.5">{r.error ? <span className="text-red-600">{r.error}</span> : r.shipDate}</td>
@@ -262,6 +292,7 @@ export default function DeliveryEstimateForm({ onFormChange, pendingRestore, onR
 
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
+  const [availability, setAvailability] = useState(null);
   const [error, setError] = useState(null);
   const [geoResolving, setGeoResolving] = useState(false);
   const [geoError, setGeoError] = useState(null);
@@ -404,6 +435,7 @@ export default function DeliveryEstimateForm({ onFormChange, pendingRestore, onR
     setSubmitting(true);
     setError(null);
     setResult(null);
+    setAvailability(null);
     try {
       const body = {
         operation,
@@ -430,9 +462,12 @@ export default function DeliveryEstimateForm({ onFormChange, pendingRestore, onR
       };
       const res = await api.post("/delivery-estimate", body);
       setResult(res.data.result);
+      setAvailability(res.data.availability ?? null);
       addLog({ type: "preview", label: "Delivery Estimate Payload", body: res.data.payload });
     } catch (err) {
       const detail = err.response?.data?.detail;
+      // CDS answers 400 when every estimate entry failed (e.g. LOCATION_NOT_FOUND) — show them as rows
+      if (Array.isArray(detail?.deliveryEstimates)) { setResult(detail); return; }
       setError(typeof detail === "string" ? detail : JSON.stringify(detail, null, 2));
     } finally {
       setSubmitting(false);
@@ -456,6 +491,7 @@ export default function DeliveryEstimateForm({ onFormChange, pendingRestore, onR
     setCatalogProducts([]);
     onCatalogChange?.(null, []);
     setResult(null);
+    setAvailability(null);
     setError(null);
     setGeoError(null);
   };
@@ -470,7 +506,7 @@ export default function DeliveryEstimateForm({ onFormChange, pendingRestore, onR
 
   return (
     <>
-      {result && <DeResult operation={operation} result={result} onClose={() => setResult(null)} />}
+      {result && <DeResult operation={operation} result={result} availability={availability} onClose={() => setResult(null)} />}
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <h2 className="text-lg font-semibold text-gray-800">Delivery Estimate</h2>

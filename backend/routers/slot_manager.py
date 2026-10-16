@@ -1,22 +1,26 @@
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional, List
-from services.salesforce import sf_get, sf_post, sf_patch, sf_delete
+from services.salesforce import sf_get, sf_post, sf_patch, sf_delete, sf_delete_bulk
 from services.org_store import get_active_alias
 from services.sf_cache import cached_sf_get, invalidate_key, invalidate_prefix
 import random
 from datetime import date, datetime, timedelta
 
 router = APIRouter()
-SF_API = "/services/data/v65.0"
+from services.sf_version import SF_API
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 def _parse_sf_time(t) -> Optional[int]:
-    """BusinessHours time fields are milliseconds since midnight."""
+    """BusinessHours time fields: either milliseconds int or 'HH:MM:SS.sssZ' string."""
     if t is None:
         return None
-    return int(t) // 1000 // 60  # → minutes since midnight
+    if isinstance(t, str):
+        # e.g. "09:00:00.000Z"
+        parts = t.rstrip("Z").split(":")
+        return int(parts[0]) * 60 + int(parts[1])
+    return int(t) // 1000 // 60  # milliseconds since midnight → minutes
 
 
 def _minutes_to_hhmm(m: int) -> str:
@@ -24,32 +28,30 @@ def _minutes_to_hhmm(m: int) -> str:
 
 
 DAY_FIELDS = {
-    0: ("MondayStartTime", "MondayEndTime", "MondayIsOpen"),
-    1: ("TuesdayStartTime", "TuesdayEndTime", "TuesdayIsOpen"),
-    2: ("WednesdayStartTime", "WednesdayEndTime", "WednesdayIsOpen"),
-    3: ("ThursdayStartTime", "ThursdayEndTime", "ThursdayIsOpen"),
-    4: ("FridayStartTime", "FridayEndTime", "FridayIsOpen"),
-    5: ("SaturdayStartTime", "SaturdayEndTime", "SaturdayIsOpen"),
-    6: ("SundayStartTime", "SundayEndTime", "SundayIsOpen"),
+    0: ("MondayStartTime", "MondayEndTime"),
+    1: ("TuesdayStartTime", "TuesdayEndTime"),
+    2: ("WednesdayStartTime", "WednesdayEndTime"),
+    3: ("ThursdayStartTime", "ThursdayEndTime"),
+    4: ("FridayStartTime", "FridayEndTime"),
+    5: ("SaturdayStartTime", "SaturdayEndTime"),
+    6: ("SundayStartTime", "SundayEndTime"),
 }
 
 BH_FIELDS = (
     "Id,Name,IsActive,"
-    "MondayStartTime,MondayEndTime,MondayIsOpen,"
-    "TuesdayStartTime,TuesdayEndTime,TuesdayIsOpen,"
-    "WednesdayStartTime,WednesdayEndTime,WednesdayIsOpen,"
-    "ThursdayStartTime,ThursdayEndTime,ThursdayIsOpen,"
-    "FridayStartTime,FridayEndTime,FridayIsOpen,"
-    "SaturdayStartTime,SaturdayEndTime,SaturdayIsOpen,"
-    "SundayStartTime,SundayEndTime,SundayIsOpen"
+    "MondayStartTime,MondayEndTime,"
+    "TuesdayStartTime,TuesdayEndTime,"
+    "WednesdayStartTime,WednesdayEndTime,"
+    "ThursdayStartTime,ThursdayEndTime,"
+    "FridayStartTime,FridayEndTime,"
+    "SaturdayStartTime,SaturdayEndTime,"
+    "SundayStartTime,SundayEndTime"
 )
 
 
 def _slots_for_day(bh: dict, weekday: int, duration: int, max_concurrent: int, existing: List[str]) -> List[dict]:
     """Generate slot list for a given weekday from BusinessHours, subtracting existing bookings."""
-    start_f, end_f, open_f = DAY_FIELDS[weekday]
-    if not bh.get(open_f):
-        return []
+    start_f, end_f = DAY_FIELDS[weekday]
     start_min = _parse_sf_time(bh.get(start_f))
     end_min = _parse_sf_time(bh.get(end_f))
     if start_min is None or end_min is None:
@@ -112,13 +114,13 @@ async def update_config(config_id: str, body: SlotConfigBody):
 # ── Slot availability ─────────────────────────────────────────────────────────
 
 DEFAULT_BH = {
-    "MondayIsOpen": True, "MondayStartTime": 32400000, "MondayEndTime": 64800000,
-    "TuesdayIsOpen": True, "TuesdayStartTime": 32400000, "TuesdayEndTime": 64800000,
-    "WednesdayIsOpen": True, "WednesdayStartTime": 32400000, "WednesdayEndTime": 64800000,
-    "ThursdayIsOpen": True, "ThursdayStartTime": 32400000, "ThursdayEndTime": 64800000,
-    "FridayIsOpen": True, "FridayStartTime": 32400000, "FridayEndTime": 64800000,
-    "SaturdayIsOpen": False, "SaturdayStartTime": 32400000, "SaturdayEndTime": 64800000,
-    "SundayIsOpen": False, "SundayStartTime": 32400000, "SundayEndTime": 64800000,
+    "MondayStartTime": 32400000, "MondayEndTime": 64800000,
+    "TuesdayStartTime": 32400000, "TuesdayEndTime": 64800000,
+    "WednesdayStartTime": 32400000, "WednesdayEndTime": 64800000,
+    "ThursdayStartTime": 32400000, "ThursdayEndTime": 64800000,
+    "FridayStartTime": 32400000, "FridayEndTime": 64800000,
+    "SaturdayStartTime": None, "SaturdayEndTime": None,
+    "SundayStartTime": None, "SundayEndTime": None,
 }
 
 
@@ -407,10 +409,8 @@ async def clean_bookings(body: CleanBody):
     result = await sf_get(f"{SF_API}/query", params={"q": soql})
     ids = [r["Id"] for r in result.get("records", [])]
 
-    deleted = 0
-    for record_id in ids:
-        await sf_delete(f"{SF_API}/sobjects/SlotBooking__c/{record_id}")
-        deleted += 1
+    await sf_delete_bulk(ids)
+    deleted = len(ids)
 
     alias = get_active_alias()
     if body.config_id:

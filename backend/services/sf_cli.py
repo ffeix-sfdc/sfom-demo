@@ -47,13 +47,12 @@ def _oauth_refresh(creds: dict) -> str:
     return new_token
 
 
-def _alias_to_username(alias: str) -> str:
-    """Resolve alias → username via sf org display (metadata only, no token needed)."""
+def _org_display(alias: str) -> dict:
+    """sf org display metadata (username, apiVersion…) — no token needed."""
     try:
-        token_data = _run(["sf", "org", "display", "--target-org", alias, "--json"])
-        return token_data.get("result", {}).get("username", alias)
+        return _run(["sf", "org", "display", "--target-org", alias, "--json"]).get("result", {})
     except Exception:
-        return alias
+        return {}
 
 
 def get_org_token(alias: str) -> dict:
@@ -84,12 +83,14 @@ def get_org_token(alias: str) -> dict:
         "access_token": access_token,
         "instance_url": instance_url,
         "username": username,
+        "api_version": display.get("apiVersion", ""),
     }
 
 
 def refresh_org_token(alias: str) -> dict:
     """Force a real OAuth2 token refresh using the stored refresh token."""
-    username = _alias_to_username(alias)
+    display = _org_display(alias)
+    username = display.get("username", alias)
     try:
         creds = _load_sfdx_creds(username)
         new_token = _oauth_refresh(creds)
@@ -102,6 +103,7 @@ def refresh_org_token(alias: str) -> dict:
             "access_token": new_token,
             "instance_url": creds.get("instanceUrl", ""),
             "username": username,
+            "api_version": display.get("apiVersion", ""),
         }
     except Exception:
         return get_org_token(alias)

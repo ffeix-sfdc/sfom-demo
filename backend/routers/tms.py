@@ -1,14 +1,14 @@
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional, List
-from services.salesforce import sf_get, sf_post, sf_patch, sf_delete
+from services.salesforce import sf_get, sf_post, sf_patch, sf_delete, sf_delete_bulk
 from services.sf_cache import cached_sf_get, invalidate_key, invalidate_prefix
 from services.org_store import get_active_alias
 import random
 from datetime import date, datetime, timedelta
 
 router = APIRouter()
-SF_API = "/services/data/v65.0"
+from services.sf_version import SF_API
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -382,10 +382,8 @@ async def clean_bookings(body: TmsCleanBody):
     result = await sf_get(f"{SF_API}/query", params={"q": soql})
     ids = [r["Id"] for r in result.get("records", [])]
 
-    deleted = 0
-    for record_id in ids:
-        await sf_delete(f"{SF_API}/sobjects/TmsBooking__c/{record_id}")
-        deleted += 1
+    await sf_delete_bulk(ids)
+    deleted = len(ids)
 
     if body.config_id:
         method_ref = await _get_method_ref(body.config_id)

@@ -5,8 +5,7 @@ from services.salesforce import sf_post, sf_get
 
 router = APIRouter()
 
-SF_API = "/services/data/v65.0"
-CONNECT_API = "/services/data/v65.0/connect"
+from services.sf_version import SF_API, CONNECT_API
 
 
 class CheckoutAddress(BaseModel):

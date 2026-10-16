@@ -502,7 +502,7 @@ export default function CatalogPanel({ activeCatalogId, onSelectCatalog }) {
         </div>
 
         {/* New catalog form */}
-        <div className="border-b p-3 shrink-0">
+        <div className={editingCatalog === "new" ? "flex-1 overflow-y-auto p-3" : "border-b p-3 shrink-0"}>
           {editingCatalog === "new" ? (
             <div className="space-y-2">
               <input
@@ -668,7 +668,7 @@ export default function CatalogPanel({ activeCatalogId, onSelectCatalog }) {
         </div>
 
         {/* Catalog list */}
-        <div className="flex-1 overflow-y-auto">
+        <div className={`overflow-y-auto ${editingCatalog === "new" ? "hidden" : "flex-1"}`}>
           {catalogs.length === 0 ? (
             <p className="text-gray-400 text-sm text-center mt-8 px-4">{t.noCatalogs}</p>
           ) : (
